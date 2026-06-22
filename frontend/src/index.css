@@ -4,6 +4,6 @@
 
 :root { font-size: 16px; }
 /* Large-mode: one-tap toggle adds .text-large to <html>, bumping the rem scale */
-html.text-large { font-size: 22px; }
+html.text-large { font-size: 22.5px; }
 body { @apply bg-paper text-ink text-base; margin: 0; }
 button { min-width: theme('minWidth.touch'); min-height: theme('minHeight.touch'); }
