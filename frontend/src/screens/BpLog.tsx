@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { usePersonPicker } from "../lib/personPicker";
+import { useAuth } from "../lib/auth";
 import { Button } from "../components/Button";
 import { Confirmation } from "../components/Confirmation";
 import { BpChart } from "../components/BpChart";
@@ -90,6 +91,8 @@ const RANGE_OPTIONS: [number, string][] = [
 ];
 
 export function BpLog() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { selected, picker } = usePersonPicker();
   const [readings, setReadings] = useState<Reading[]>([]);
   const [target, setTarget] = useState<Target | null>(null);
@@ -101,6 +104,14 @@ export function BpLog() {
   const [ack, setAck] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Target form state (admin only)
+  const [tSysLow, setTSysLow] = useState("");
+  const [tSysHigh, setTSysHigh] = useState("");
+  const [tDiaLow, setTDiaLow] = useState("");
+  const [tDiaHigh, setTDiaHigh] = useState("");
+  const [tLabel, setTLabel] = useState("");
+  const [targetError, setTargetError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (selected == null) return;
     const v = await api
@@ -111,6 +122,14 @@ export function BpLog() {
     if (v != null) {
       setReadings(v.readings);
       setTarget(v.target);
+      // Pre-fill the admin target form with existing values
+      if (v.target != null) {
+        setTSysLow(String(v.target.sys_low));
+        setTSysHigh(String(v.target.sys_high));
+        setTDiaLow(String(v.target.dia_low));
+        setTDiaHigh(String(v.target.dia_high));
+        setTLabel(v.target.doctor_label);
+      }
     }
   }, [selected, days]);
 
@@ -131,6 +150,37 @@ export function BpLog() {
       void load();
     } catch {
       setError("Could not save the reading — please try again.");
+    }
+  }
+
+  async function handleSaveTarget() {
+    if (selected == null) return;
+    if (tLabel.trim() === "") {
+      setTargetError("Doctor / clinic label is required.");
+      return;
+    }
+    const sysLow = Number(tSysLow);
+    const sysHigh = Number(tSysHigh);
+    const diaLow = Number(tDiaLow);
+    const diaHigh = Number(tDiaHigh);
+    if (!tSysLow || !tSysHigh || !tDiaLow || !tDiaHigh ||
+        isNaN(sysLow) || isNaN(sysHigh) || isNaN(diaLow) || isNaN(diaHigh)) {
+      setTargetError("All four range values are required and must be numbers.");
+      return;
+    }
+    try {
+      await api.put(`/api/people/${selected}/bp/target`, {
+        sys_low: sysLow,
+        sys_high: sysHigh,
+        dia_low: diaLow,
+        dia_high: diaHigh,
+        doctor_label: tLabel.trim(),
+      });
+      setAck("Target saved ✓");
+      setTargetError(null);
+      void load();
+    } catch {
+      setTargetError("Could not save the target — please try again.");
     }
   }
 
@@ -194,6 +244,81 @@ export function BpLog() {
 
       {/* Trend chart — two series by line-style + legend, not color */}
       <BpChart readings={readings} target={target} showPulse={showPulse} />
+
+      {/* Admin-only: doctor's target entry form */}
+      {isAdmin && (
+        <section className="border-4 rounded-xl p-4 flex flex-col gap-4">
+          <h3 className="text-big font-bold">Doctor's target (optional)</h3>
+          <p className="text-base">
+            Enter the range your doctor gave — readings are then shown as within
+            / above / below it. Not the app deciding what's normal.
+          </p>
+          {targetError != null && (
+            <p role="alert" className="text-big text-red-700">{targetError}</p>
+          )}
+          <div className="flex flex-wrap gap-4 items-end">
+            <label className="flex flex-col gap-1 text-base">
+              Systolic low
+              <input
+                type="number"
+                className="border-4 rounded-xl w-24 h-16 text-big text-center"
+                value={tSysLow}
+                onChange={e => setTSysLow(e.target.value)}
+                aria-label="Systolic low"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-base">
+              Systolic high
+              <input
+                type="number"
+                className="border-4 rounded-xl w-24 h-16 text-big text-center"
+                value={tSysHigh}
+                onChange={e => setTSysHigh(e.target.value)}
+                aria-label="Systolic high"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-base">
+              Diastolic low
+              <input
+                type="number"
+                className="border-4 rounded-xl w-24 h-16 text-big text-center"
+                value={tDiaLow}
+                onChange={e => setTDiaLow(e.target.value)}
+                aria-label="Diastolic low"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-base">
+              Diastolic high
+              <input
+                type="number"
+                className="border-4 rounded-xl w-24 h-16 text-big text-center"
+                value={tDiaHigh}
+                onChange={e => setTDiaHigh(e.target.value)}
+                aria-label="Diastolic high"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-base">
+              Doctor / clinic label
+              <input
+                type="text"
+                className="border-4 rounded-xl px-3 h-16 text-big"
+                value={tLabel}
+                onChange={e => setTLabel(e.target.value)}
+                placeholder="e.g. Dr. Lee"
+                aria-label="Doctor or clinic label"
+              />
+            </label>
+          </div>
+          <div>
+            <Button
+              onClick={() => void handleSaveTarget()}
+              icon={<span aria-hidden="true">✓</span>}
+            >
+              Save target
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Recent readings list */}
       <section>
