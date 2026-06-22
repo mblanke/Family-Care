@@ -19,3 +19,8 @@ def authenticate(db: Session, username: str, password: str) -> User | None:
     if not verify_password(password, u.password_hash):
         return None
     return u
+
+
+def set_font_scale(db: Session, user: User, font_scale: str) -> None:
+    user.font_scale = font_scale
+    db.commit()

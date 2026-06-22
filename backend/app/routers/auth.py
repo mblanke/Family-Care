@@ -32,6 +32,5 @@ def me(user: User = Depends(current_user)):
 def set_font_scale(body: FontScaleIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     if body.font_scale not in ("normal", "large"):
         raise HTTPException(status_code=422, detail="font_scale must be 'normal' or 'large'")
-    user.font_scale = body.font_scale
-    db.commit()
+    auth_service.set_font_scale(db, user, body.font_scale)
     return {"ok": True}
