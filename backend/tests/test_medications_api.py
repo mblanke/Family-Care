@@ -140,3 +140,55 @@ def test_family_cannot_stop_or_note(env):
 def test_dose_change_404_unknown_med(env):
     _login(env, "admin")
     assert env.post("/api/medications/9999/dose", json={"new_dose": "1 mg"}).status_code == 404
+
+
+def test_parent_403_on_add_med(env):
+    _login(env, "par")
+    assert (
+        env.post(
+            f"/api/people/{env.pid}/medications",
+            json={"name": "X", "dose": "1", "slot": "morning"},
+        ).status_code
+        == 403
+    )
+
+
+def test_parent_403_on_change_dose(env):
+    _login(env, "par")
+    assert (
+        env.post(
+            "/api/medications/1/dose", json={"new_dose": "5 mg", "reason": "test"}
+        ).status_code
+        == 403
+    )
+
+
+def test_parent_403_on_stop_med(env):
+    _login(env, "par")
+    assert env.post("/api/medications/1/stop", json={"reason": "test"}).status_code == 403
+
+
+def test_parent_403_on_add_note(env):
+    _login(env, "par")
+    assert (
+        env.post(
+            f"/api/people/{env.pid}/medications/note",
+            json={"summary": "test note"},
+        ).status_code
+        == 403
+    )
+
+
+def test_family_403_on_change_dose(env):
+    _login(env, "fam")
+    assert (
+        env.post(
+            "/api/medications/1/dose", json={"new_dose": "5 mg", "reason": "test"}
+        ).status_code
+        == 403
+    )
+
+
+def test_stop_med_404_unknown_med(env):
+    _login(env, "admin")
+    assert env.post("/api/medications/99999/stop", json={"reason": "test"}).status_code == 404
