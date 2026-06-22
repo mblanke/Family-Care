@@ -83,6 +83,17 @@ add and edit (admin add/edit works on iPhone width too).
 - **Font toggle** — enlarges text and persists after reload (stored per user).
 - **PWA** — Add to iPad home screen (Safari Share → Add to Home Screen) → opens standalone full-screen.
 
+## v1.1 — care tracking
+
+Per-person medication record with an append-only change history (admin maintains the regimen;
+family and parents view only) and a blood-pressure log with an optional doctor-entered target and
+a neutral two-line trend chart. These are records to share with a clinician — the app gives no
+medical advice and never decides what is "normal".
+
+The BP screen includes a **Print / Save PDF** link that opens a plain HTML summary of recent
+readings (including the attributed doctor target if set) in a new tab, ready for browser Print →
+Save as PDF to hand to a clinician.
+
 ## Migrations
 
 Schema changes ship as Alembic migrations and run automatically on `api` container start

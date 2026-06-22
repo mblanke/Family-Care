@@ -182,6 +182,14 @@ export function BpLog() {
           />
           Show pulse
         </label>
+        <a
+          href={`/api/people/${selected}/bp/export?days=${days || 90}`}
+          target="_blank"
+          rel="noopener"
+          className="min-h-touch px-4 rounded-xl border-4 text-base font-bold inline-flex items-center"
+        >
+          Print / Save PDF
+        </a>
       </div>
 
       {/* Trend chart — two series by line-style + legend, not color */}
