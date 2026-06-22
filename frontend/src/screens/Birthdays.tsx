@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { Birthday } from "../api/types";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 // Hoisted row helper
 function BirthdayRow({ b, canEdit, onDelete }:
@@ -30,6 +31,7 @@ export function Birthdays({ canEdit }: { canEdit: boolean }) {
   const [day, setDay] = useState(1);
   const [year, setYear] = useState<number | "">("");
   const [toDelete, setToDelete] = useState<Birthday | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function load(): void {
     api.get<Birthday[]>("/api/birthdays").then(setList).catch(console.error);
@@ -38,21 +40,30 @@ export function Birthdays({ canEdit }: { canEdit: boolean }) {
 
   async function add(): Promise<void> {
     if (!name.trim()) return;
-    await api.post("/api/birthdays", {
-      name: name.trim(), month, day, year: year === "" ? null : year,
-    }).catch(console.error);
-    setName(""); setMonth(1); setDay(1); setYear("");
-    load();
+    try {
+      await api.post("/api/birthdays", {
+        name: name.trim(), month, day, year: year === "" ? null : year,
+      });
+      setName(""); setMonth(1); setDay(1); setYear("");
+      load();
+    } catch {
+      setError("Couldn't add birthday — please try again.");
+    }
   }
 
   async function remove(id: number): Promise<void> {
     setToDelete(null);
-    await api.delete(`/api/birthdays/${id}`).catch(console.error);
-    load();
+    try {
+      await api.delete(`/api/birthdays/${id}`);
+      load();
+    } catch {
+      setError("Couldn't delete birthday — please try again.");
+    }
   }
 
   return (
     <div className="p-6 flex flex-col gap-6">
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
       <h2 className="text-huge font-bold">Birthdays</h2>
       <ul className="flex flex-col gap-3">
         {list.map(b => (

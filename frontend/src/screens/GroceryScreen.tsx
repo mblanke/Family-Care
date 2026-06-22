@@ -4,6 +4,7 @@ import type { GroceryItem } from "../api/types";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Confirmation } from "../components/Confirmation";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 type Filter = "costco" | "grocery" | "all";
 const STORE_LABEL: Record<string, string> = {
@@ -43,6 +44,7 @@ export function GroceryScreen() {
   const [store, setStore] = useState<"costco" | "grocery" | "either">("either");
   const [ack, setAck] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     api
@@ -57,27 +59,44 @@ export function GroceryScreen() {
 
   async function add() {
     if (!name.trim()) return;
-    await api.post("/api/grocery", { name: name.trim(), store });
-    setName("");
-    setAck("Added");
-    load();
+    try {
+      await api.post("/api/grocery", { name: name.trim(), store });
+      setName("");
+      setAck("Added");
+      load();
+    } catch {
+      setError("Couldn't add item — please try again.");
+    }
   }
 
   async function check(i: GroceryItem) {
-    await api.post(`/api/grocery/${i.id}/check`, { checked: !i.checked });
-    load();
+    try {
+      await api.post(`/api/grocery/${i.id}/check`, { checked: !i.checked });
+      load();
+    } catch {
+      setError("Couldn't save — please try again.");
+    }
   }
 
   async function step(i: GroceryItem, d: number) {
-    await api.post(`/api/grocery/${i.id}/qty`, { qty: i.qty + d });
-    load();
+    try {
+      await api.post(`/api/grocery/${i.id}/qty`, { qty: i.qty + d });
+      load();
+    } catch {
+      setError("Couldn't save — please try again.");
+    }
   }
 
   async function clear() {
-    await api.post("/api/grocery/clear-checked");
-    setConfirmClear(false);
-    setAck("Cleared checked items");
-    load();
+    try {
+      await api.post("/api/grocery/clear-checked");
+      setConfirmClear(false);
+      setAck("Cleared checked items");
+      load();
+    } catch {
+      setConfirmClear(false);
+      setError("Couldn't clear items — please try again.");
+    }
   }
 
   // Group by store for display; within a group, unchecked first then checked (greyed)
@@ -92,6 +111,7 @@ export function GroceryScreen() {
   return (
     <div className="p-6 flex flex-col gap-6">
       {ack && <Confirmation message={ack} onDone={() => setAck(null)} />}
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
 
       {/* Segmented control — text labels, not color-only */}
       <div className="flex gap-touch">

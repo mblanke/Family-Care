@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Person } from "../lib/people";
 import { Button } from "../components/Button";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 interface Acct {
   id: number;
@@ -22,6 +23,7 @@ export function Accounts() {
     role: "family",
     person_id: "",
   });
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     setAccts(await api.get<Acct[]>("/api/accounts").catch(() => []));
@@ -31,16 +33,21 @@ export function Accounts() {
   useEffect(() => { void load(); }, []);
 
   async function create() {
-    await api.post("/api/accounts", {
-      ...form,
-      person_id: form.role === "parent" && form.person_id ? Number(form.person_id) : null,
-    });
-    setForm({ username: "", password: "", display_name: "", role: "family", person_id: "" });
-    await load();
+    try {
+      await api.post("/api/accounts", {
+        ...form,
+        person_id: form.role === "parent" && form.person_id ? Number(form.person_id) : null,
+      });
+      setForm({ username: "", password: "", display_name: "", role: "family", person_id: "" });
+      await load();
+    } catch {
+      setError("Couldn't create account — please try again.");
+    }
   }
 
   return (
     <div className="p-6 flex flex-col gap-4">
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
       <h2 className="text-huge font-bold">Accounts</h2>
       <div className="border-4 rounded-2xl p-4 flex flex-col gap-3 max-w-xl">
         <input

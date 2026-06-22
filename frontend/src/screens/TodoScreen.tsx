@@ -4,6 +4,7 @@ import type { Todo } from "../api/types";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Confirmation } from "../components/Confirmation";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 // Hoisted to module scope — not inside render — to avoid remount/focus churn
 function Row({ t, onToggle, onDelete }:
@@ -29,6 +30,7 @@ export function TodoScreen() {
   const [text, setText] = useState("");
   const [ack, setAck] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Todo | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     api.get<Todo[]>("/api/todos")
@@ -39,22 +41,34 @@ export function TodoScreen() {
 
   async function add() {
     if (!text.trim()) return;
-    await api.post("/api/todos", { text: text.trim() });
-    setText("");
-    setAck("Added to the list");
-    load();
+    try {
+      await api.post("/api/todos", { text: text.trim() });
+      setText("");
+      setAck("Added to the list");
+      load();
+    } catch {
+      setError("Couldn't add item — please try again.");
+    }
   }
 
   async function toggle(t: Todo) {
-    await api.post(`/api/todos/${t.id}/done`, { done: !t.done });
-    if (!t.done) setAck("Checked off ✓");
-    load();
+    try {
+      await api.post(`/api/todos/${t.id}/done`, { done: !t.done });
+      if (!t.done) setAck("Checked off ✓");
+      load();
+    } catch {
+      setError("Couldn't save — please try again.");
+    }
   }
 
   async function remove(t: Todo) {
     setToDelete(null);
-    await api.delete(`/api/todos/${t.id}`);
-    load();
+    try {
+      await api.delete(`/api/todos/${t.id}`);
+      load();
+    } catch {
+      setError("Couldn't delete item — please try again.");
+    }
   }
 
   const open = items.filter(i => !i.done);
@@ -63,6 +77,7 @@ export function TodoScreen() {
   return (
     <div className="p-6 flex flex-col gap-6">
       {ack && <Confirmation message={ack} onDone={() => setAck(null)} />}
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
       <div className="flex gap-touch">
         <input
           className="flex-1 text-big p-4 border-4 rounded-xl"

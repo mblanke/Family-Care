@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { PersonApi } from "../api/types";
 import { PersonBadge } from "../components/PersonBadge";
 import { Button } from "../components/Button";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 interface Props {
   people: PersonApi[];
@@ -73,6 +74,7 @@ const EMPTY: FormState = {
 export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: Props) {
   const [f, setF] = useState<FormState>({ ...EMPTY, ...initial });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]): void {
     setF(prev => ({ ...prev, [k]: v }));
@@ -89,8 +91,8 @@ export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: 
         await api.post("/api/appointments", body);
       }
       onSaved();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setError("Couldn't save appointment — please try again.");
     } finally {
       setSaving(false);
     }
@@ -98,6 +100,7 @@ export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: 
 
   return (
     <div className="flex flex-col gap-4 border-4 rounded-2xl p-6">
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
       <h3 className="text-big font-bold">{apptId ? "Edit Appointment" : "New Appointment"}</h3>
 
       <input className="text-big p-4 border-4 rounded-xl" placeholder="Title"

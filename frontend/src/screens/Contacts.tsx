@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useAuth } from "../lib/auth";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 interface Contact {
   id: number;
@@ -70,6 +71,7 @@ export function Contacts() {
   const [list, setList] = useState<Contact[]>([]);
   const [toDelete, setToDelete] = useState<Contact | null>(null);
   const [form, setForm] = useState({ name: "", role: "doctor", phone: "", is_emergency: false, address: "" });
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     api.get<Contact[]>("/api/contacts").then(setList).catch(() => {});
@@ -78,15 +80,23 @@ export function Contacts() {
 
   async function add() {
     if (!form.name || !form.phone) return;
-    await api.post("/api/contacts", { ...form, address: form.address || null }).catch(() => {});
-    setForm({ name: "", role: "doctor", phone: "", is_emergency: false, address: "" });
-    load();
+    try {
+      await api.post("/api/contacts", { ...form, address: form.address || null });
+      setForm({ name: "", role: "doctor", phone: "", is_emergency: false, address: "" });
+      load();
+    } catch {
+      setError("Couldn't add contact — please try again.");
+    }
   }
 
   async function remove(c: Contact) {
     setToDelete(null);
-    await api.delete(`/api/contacts/${c.id}`).catch(() => {});
-    load();
+    try {
+      await api.delete(`/api/contacts/${c.id}`);
+      load();
+    } catch {
+      setError("Couldn't delete contact — please try again.");
+    }
   }
 
   const emergency = list.filter(c => c.is_emergency);
@@ -94,6 +104,7 @@ export function Contacts() {
 
   return (
     <div className="p-6 flex flex-col gap-6">
+      {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
       <h2 className="text-huge font-bold">Contacts</h2>
 
       {emergency.length > 0 && (
