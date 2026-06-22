@@ -3,6 +3,9 @@ import { useState } from "react";
 import { Today } from "../screens/Today";
 import { TodoScreen } from "../screens/TodoScreen";
 import { GroceryScreen } from "../screens/GroceryScreen";
+import { Schedule } from "../screens/Schedule";
+import { Birthdays } from "../screens/Birthdays";
+import { MonthView } from "./MonthView";
 type Tab = "today" | "schedule" | "todo" | "grocery" | "birthdays" | "accounts";
 export function AdminLayout() {
   const [tab, setTab] = useState<Tab>("today");
@@ -18,9 +21,10 @@ export function AdminLayout() {
         ))}
       </nav>
       {tab === "today" && <Today />}
+      {tab === "schedule" && <><Schedule canEdit /><MonthView /></>}
       {tab === "todo" && <TodoScreen />}
       {tab === "grocery" && <GroceryScreen />}
-      {/* Schedule / Birthdays / Accounts mounted in later tasks */}
+      {tab === "birthdays" && <Birthdays canEdit />}
     </div>
   );
 }

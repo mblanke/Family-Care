@@ -37,3 +37,25 @@ export interface TodayData {
   open_todos: Todo[];
   upcoming_birthdays: Upcoming[];
 }
+export interface WeekDay {
+  date: string;
+  appointments: Occurrence[];
+}
+export interface WeekData {
+  week_start: string;
+  days: WeekDay[];
+  driver_runs: Occurrence[];
+}
+export interface Birthday {
+  id: number;
+  name: string;
+  month: number;
+  day: number;
+  year: number | null;
+}
+export interface PersonApi {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+}
