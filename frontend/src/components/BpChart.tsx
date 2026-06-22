@@ -92,7 +92,13 @@ export function BpChart({
               x={W - P} y={yPos(target.sys_high) - 4}
               textAnchor="end" fontSize="14" opacity="0.6"
             >
-              {target.doctor_label}&apos;s target
+              {target.doctor_label}&apos;s target (systolic)
+            </text>
+            <text
+              x={W - P} y={yPos(target.dia_low) - 4}
+              textAnchor="end" fontSize="14" opacity="0.6"
+            >
+              {target.doctor_label}&apos;s target (diastolic)
             </text>
           </>
         )}

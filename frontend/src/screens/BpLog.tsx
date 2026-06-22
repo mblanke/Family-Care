@@ -99,6 +99,7 @@ export function BpLog() {
   const [dia, setDia] = useState(80);
   const [pulse, setPulse] = useState(70);
   const [ack, setAck] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (selected == null) return;
@@ -119,21 +120,27 @@ export function BpLog() {
 
   async function handleLog() {
     if (selected == null) return;
-    await api
-      .post(`/api/people/${selected}/bp`, {
+    try {
+      await api.post(`/api/people/${selected}/bp`, {
         systolic: sys,
         diastolic: dia,
         pulse,
-      })
-      .catch(() => null);
-    setAck("Reading saved");
-    void load();
+      });
+      setAck("Reading saved ✓");
+      setError(null);
+      void load();
+    } catch {
+      setError("Could not save the reading — please try again.");
+    }
   }
 
   return (
     <div className="p-6 flex flex-col gap-6">
       {ack != null && (
         <Confirmation message={ack} onDone={() => setAck(null)} />
+      )}
+      {error != null && (
+        <p role="alert" className="text-big text-red-700">{error}</p>
       )}
 
       <h2 className="text-huge font-bold">Blood pressure</h2>
