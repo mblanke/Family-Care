@@ -44,6 +44,45 @@ Open the Tailscale URL in Safari → Share → Add to Home Screen. Opens full-sc
 > toggle font size (page text should grow and persist after reload), confirm
 > `APP_DISPLAY_NAME` (default: "Home Board") shows in the header.
 
+## v1 features
+
+Today screen (default), shared schedule with ride flags + the monthly Bank-bills routine,
+a driver roll-up, to-do and grocery (Costco/Grocery/All) lists parents manage themselves,
+and birthday reminders. Parent accounts get a simplified Today-first layout; admin/family
+add and edit (admin add/edit works on iPhone width too).
+
+### Screens and capabilities
+
+| Screen | Who sees it | Notes |
+|---|---|---|
+| **Today** | everyone | Appointments today, open to-dos, upcoming birthdays (within 14 days) |
+| **Schedule** | admin + family | Week view with ride-flag badge; admin also gets month view |
+| **Driver roll-up** | admin + family | "What am I driving this week" — appointments needing a ride |
+| **To-do** | everyone | Parents add/check/delete; big visual confirmation banner (~6s) |
+| **Grocery** | everyone | Costco / Grocery / All toggle; qty stepper; clear-checked |
+| **Birthdays** | admin + family | Add/edit upcoming birthdays; surfaced on Today |
+| **Accounts** | admin only | Create family + parent accounts; not visible to family/parent |
+
+### Role table
+
+| Role | Layout | Can do |
+|---|---|---|
+| `admin` | Full nav (Today + Schedule + month + Accounts) | Everything |
+| `family` | Full nav minus Accounts | Add/edit appointments, birthdays; manage to-dos + grocery |
+| `parent` | Today-first, no nav bar | Manage to-dos + grocery only |
+
+### Manual verification steps
+
+> The steps below require an iPad/browser on the Tailscale network and cannot be automated.
+
+- **Parent login** — lands on Today with no navigation; sees Cardiology (ride badge) and upcoming birthday.
+- **Parent to-do/grocery** — add/check/delete a to-do and grocery item; big visual confirmation banner appears and stays ~6s; checked grocery items drop to the bottom; cannot see Schedule/Accounts/month.
+- **Grocery filters** — Costco | Grocery | All toggle filters correctly; qty stepper works.
+- **Family login** — can add an appointment + birthday; cannot open Accounts (403 / hidden).
+- **Admin login** — Schedule shows driver roll-up; month view visible; can create family/parent accounts.
+- **Font toggle** — enlarges text and persists after reload (stored per user).
+- **PWA** — Add to iPad home screen (Safari Share → Add to Home Screen) → opens standalone full-screen.
+
 ## Migrations
 
 Schema changes ship as Alembic migrations and run automatically on `api` container start
