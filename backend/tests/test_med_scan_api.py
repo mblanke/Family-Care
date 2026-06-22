@@ -39,6 +39,7 @@ def test_scan_returns_candidates_and_writes_nothing(env):
     assert body["candidates"][0]["name"] == "Amlodipine" and body["scan_id"]
     db = env.TS()
     assert db.scalar(select(Medication)) is None          # scan alone persisted nothing
+    assert db.scalar(select(MedicationChange)) is None    # no history writes from scan
 
 def test_parent_cannot_scan(env):
     _login(env, "mom")
