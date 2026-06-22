@@ -4,10 +4,9 @@ import { api } from "../api/client";
 import type { Occurrence } from "../api/types";
 
 function getMonthBounds(year: number, month: number): { start: string; end: string } {
-  const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0);
   return {
-    start: start.toISOString().slice(0, 10),
+    start: `${year}-${String(month + 1).padStart(2, "0")}-01T00:00:00`,
     end: end.toISOString().slice(0, 10) + "T23:59:59",
   };
 }
@@ -39,7 +38,7 @@ export function MonthView() {
 
   function load(y: number, m: number): void {
     const { start, end } = getMonthBounds(y, m);
-    api.get<Occurrence[]>(`/api/appointments?start=${start}T00:00:00&end=${end}`)
+    api.get<Occurrence[]>(`/api/appointments?start=${start}&end=${end}`)
       .then(setAppts).catch(console.error);
   }
 

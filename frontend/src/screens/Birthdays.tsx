@@ -40,14 +40,14 @@ export function Birthdays({ canEdit }: { canEdit: boolean }) {
     if (!name.trim()) return;
     await api.post("/api/birthdays", {
       name: name.trim(), month, day, year: year === "" ? null : year,
-    });
+    }).catch(console.error);
     setName(""); setMonth(1); setDay(1); setYear("");
     load();
   }
 
   async function remove(id: number): Promise<void> {
     setToDelete(null);
-    await api.delete(`/api/birthdays/${id}`);
+    await api.delete(`/api/birthdays/${id}`).catch(console.error);
     load();
   }
 

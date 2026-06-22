@@ -89,6 +89,8 @@ export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: 
         await api.post("/api/appointments", body);
       }
       onSaved();
+    } catch (err) {
+      console.error(err);
     } finally {
       setSaving(false);
     }
