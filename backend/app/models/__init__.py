@@ -4,3 +4,4 @@ from app.models.appointment import Appointment  # noqa: F401
 from app.models.todo import Todo  # noqa: F401
 from app.models.grocery import GroceryItem  # noqa: F401
 from app.models.birthday import Birthday  # noqa: F401
+from app.models.medication import Medication, MedicationChange  # noqa: F401
