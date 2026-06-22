@@ -10,6 +10,8 @@ class MedIn(BaseModel):
     prescriber: str | None = None
     prn: bool = False
     reason: str | None = None
+    scan_id: str | None = None
+    keep_photo: bool = False
 
 
 class DoseIn(BaseModel):

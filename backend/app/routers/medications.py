@@ -4,7 +4,7 @@ from app.db import get_db
 from app.deps import current_user, require_role
 from app.models.user import User
 from app.schemas.medication import MedIn, DoseIn, StopIn, NoteIn, MedOut, ChangeOut, RegimenOut
-from app.services import medications as svc
+from app.services import medications as svc, scan_store
 
 router = APIRouter(prefix="/api", tags=["medications"])
 _admin = require_role("admin")
@@ -16,19 +16,15 @@ def get_regimen(pid: int, db: Session = Depends(get_db), _: User = Depends(curre
 
 
 @router.post("/people/{pid}/medications", response_model=MedOut)
-def add_med(pid: int, body: MedIn, db: Session = Depends(get_db), user: User = Depends(_admin)):
-    return svc.add_med(
-        db,
-        person_id=pid,
-        name=body.name,
-        dose=body.dose,
-        slot=body.slot,
-        purpose=body.purpose,
-        prescriber=body.prescriber,
-        prn=body.prn,
-        reason=body.reason,
-        recorded_by=user.id,
-    )
+def add(pid: int, body: MedIn, db: Session = Depends(get_db), user: User = Depends(_admin)):
+    photo_path = None
+    if body.scan_id:
+        photo_path = scan_store.keep(body.scan_id) if body.keep_photo else None
+        if not body.keep_photo:
+            scan_store.discard(body.scan_id)
+    return svc.add_med(db, person_id=pid, name=body.name, dose=body.dose, slot=body.slot,
+                       purpose=body.purpose, prescriber=body.prescriber, prn=body.prn,
+                       reason=body.reason, recorded_by=user.id, photo_path=photo_path)
 
 
 @router.post("/medications/{mid}/dose", response_model=MedOut)

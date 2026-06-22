@@ -43,3 +43,4 @@ class MedicationChange(Base):
         ForeignKey("users.id"), nullable=False
     )
     recorded_at: Mapped[datetime] = mapped_column(default=_now, nullable=False)
+    photo_path: Mapped[str | None] = mapped_column(nullable=True)

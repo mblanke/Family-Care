@@ -16,7 +16,7 @@ def history(db: Session, person_id: int) -> list[MedicationChange]:
         .order_by(MedicationChange.recorded_at.desc(), MedicationChange.id.desc())))
 
 
-def _log(db, *, person_id, medication_id, change_type, summary, reason, recorded_by) -> MedicationChange:
+def _log(db, *, person_id, medication_id, change_type, summary, reason, recorded_by, photo_path=None) -> MedicationChange:
     c = MedicationChange(
         person_id=person_id,
         medication_id=medication_id,
@@ -24,6 +24,7 @@ def _log(db, *, person_id, medication_id, change_type, summary, reason, recorded
         summary=summary,
         reason=reason,
         recorded_by=recorded_by,
+        photo_path=photo_path,
     )
     db.add(c)
     return c
@@ -41,6 +42,7 @@ def add_med(
     prescriber=None,
     prn=False,
     reason=None,
+    photo_path=None,
 ) -> Medication:
     m = Medication(
         person_id=person_id,
@@ -61,6 +63,7 @@ def add_med(
         summary=f"Started {name} {dose} ({slot})",
         reason=reason,
         recorded_by=recorded_by,
+        photo_path=photo_path,
     )
     db.commit()
     db.refresh(m)
@@ -68,7 +71,7 @@ def add_med(
 
 
 def change_dose(
-    db: Session, *, medication_id, new_dose, recorded_by, reason=None
+    db: Session, *, medication_id, new_dose, recorded_by, reason=None, photo_path=None
 ) -> Medication | None:
     m = db.get(Medication, medication_id)
     if m is None:
@@ -83,6 +86,7 @@ def change_dose(
         summary=f"{m.name} dose changed from {old} to {new_dose}",
         reason=reason,
         recorded_by=recorded_by,
+        photo_path=photo_path,
     )
     db.commit()
     db.refresh(m)
