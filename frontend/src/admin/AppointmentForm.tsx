@@ -61,7 +61,7 @@ function buildBody(f: FormState): {
     needs_ride: f.needsRide,
     notes: f.notes || null,
     recurrence: f.monthly ? "monthly" : "none",
-    recur_day: f.monthly ? new Date(start).getDate() : null,
+    recur_day: f.monthly ? parseInt(f.date.slice(8, 10), 10) : null,
   };
 }
 

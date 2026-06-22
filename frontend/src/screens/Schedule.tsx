@@ -48,10 +48,12 @@ export function Schedule({ canEdit }: { canEdit: boolean }) {
       <h2 className="text-huge font-bold">This Week</h2>
 
       {/* Driver roll-up card */}
-      {week.driver_runs.length > 0 && (
-        <div className="border-4 border-brand rounded-2xl p-4 bg-paper">
-          <h3 className="text-big font-bold mb-3">What I'm driving this week</h3>
-          {week.driver_runs.map(r => (
+      <div className="border-4 border-brand rounded-2xl p-4 bg-paper">
+        <h3 className="text-big font-bold mb-3">🚗 What I'm driving this week</h3>
+        {week.driver_runs.length === 0 ? (
+          <p className="text-big">No rides needed this week.</p>
+        ) : (
+          week.driver_runs.map(r => (
             <div key={`${r.appointment_id}-${r.start}`}
                  className="flex items-center gap-3 mb-2">
               <span className="text-base font-bold w-24 shrink-0">{formatTime(r.start)}</span>
@@ -60,9 +62,9 @@ export function Schedule({ canEdit }: { canEdit: boolean }) {
             {r.location && <span> · {r.location}</span>}
           </span>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       {/* Day sections — vertical list */}
       {week.days.map(day => (
