@@ -27,7 +27,7 @@ services:
   mcp:
     build:
       context: .
-      dockerfile: mcp/Dockerfile
+      dockerfile: mcpserver/Dockerfile
     env_file: .env
     depends_on:
       db:
