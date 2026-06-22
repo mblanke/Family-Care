@@ -5,3 +5,4 @@ from app.models.todo import Todo  # noqa: F401
 from app.models.grocery import GroceryItem  # noqa: F401
 from app.models.birthday import Birthday  # noqa: F401
 from app.models.medication import Medication, MedicationChange  # noqa: F401
+from app.models.bp_reading import BpReading, BpTarget  # noqa: F401
