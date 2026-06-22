@@ -38,7 +38,7 @@ function Card({ c, canEdit, onDelete }: { c: Contact; canEdit: boolean; onDelete
         href={`tel:${c.phone}`}
         aria-label={`Call ${c.name}`}
         className="min-h-touch rounded-2xl bg-confirm text-paper text-big font-bold
-                   inline-flex items-center justify-center gap-3"
+                   inline-flex items-center justify-center gap-3 w-full"
       >
         📞 Call {c.name}
       </a>
@@ -69,7 +69,7 @@ export function Contacts() {
   const canEdit = user?.role === "admin" || user?.role === "family";
   const [list, setList] = useState<Contact[]>([]);
   const [toDelete, setToDelete] = useState<Contact | null>(null);
-  const [form, setForm] = useState({ name: "", role: "doctor", phone: "", is_emergency: false });
+  const [form, setForm] = useState({ name: "", role: "doctor", phone: "", is_emergency: false, address: "" });
 
   function load() {
     api.get<Contact[]>("/api/contacts").then(setList).catch(() => {});
@@ -78,8 +78,8 @@ export function Contacts() {
 
   async function add() {
     if (!form.name || !form.phone) return;
-    await api.post("/api/contacts", form).catch(() => {});
-    setForm({ name: "", role: "doctor", phone: "", is_emergency: false });
+    await api.post("/api/contacts", { ...form, address: form.address || null }).catch(() => {});
+    setForm({ name: "", role: "doctor", phone: "", is_emergency: false, address: "" });
     load();
   }
 
@@ -126,6 +126,12 @@ export function Contacts() {
             placeholder="Phone"
             value={form.phone}
             onChange={e => setForm({ ...form, phone: e.target.value })}
+          />
+          <input
+            className="text-big p-3 border-4 rounded-xl"
+            placeholder="Address (optional)"
+            value={form.address}
+            onChange={e => setForm({ ...form, address: e.target.value })}
           />
           <select
             className="text-big p-3 border-4 rounded-xl"
