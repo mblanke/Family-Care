@@ -89,6 +89,7 @@ export function Medications() {
   const [history, setHistory] = useState<Change[]>([]);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [error, setError] = useState<string | null>(null);
 
   function load(pid: number) {
     api
@@ -104,19 +105,22 @@ export function Medications() {
 
   async function addMed() {
     if (selected == null) return;
-    await api
-      .post(`/api/people/${selected}/medications`, {
+    try {
+      await api.post(`/api/people/${selected}/medications`, {
         name: form.name,
         dose: form.dose,
         slot: form.slot,
         purpose: form.purpose || null,
         prescriber: form.prescriber || null,
         reason: form.reason || null,
-      })
-      .catch(() => { /* no-op */ });
-    setForm(EMPTY_FORM);
-    setAdding(false);
-    if (selected != null) load(selected);
+      });
+      setForm(EMPTY_FORM);
+      setAdding(false);
+      setError(null);
+      load(selected);
+    } catch {
+      setError("Could not save — please try again.");
+    }
   }
 
   async function changeDose(m: Med) {
@@ -125,18 +129,34 @@ export function Medications() {
     );
     if (!nd) return;
     const reason = prompt("Reason (optional, e.g. 'Dr. Lee reduced')") || null;
-    await api
-      .post(`/api/medications/${m.id}/dose`, { new_dose: nd, reason })
-      .catch(() => { /* no-op */ });
-    if (selected != null) load(selected);
+    try {
+      await api.post(`/api/medications/${m.id}/dose`, { new_dose: nd, reason });
+      if (selected != null) load(selected);
+    } catch {
+      setError("Could not save dose change — please try again.");
+    }
   }
 
   async function stopMed(m: Med) {
     const reason = prompt(`Stop ${m.name}? Reason (optional)`) || null;
-    await api
-      .post(`/api/medications/${m.id}/stop`, { reason })
-      .catch(() => { /* no-op */ });
-    if (selected != null) load(selected);
+    try {
+      await api.post(`/api/medications/${m.id}/stop`, { reason });
+      if (selected != null) load(selected);
+    } catch {
+      setError("Could not stop medication — please try again.");
+    }
+  }
+
+  async function addNote() {
+    if (selected == null) return;
+    const summary = window.prompt("Add a note to the medication history (recorded verbatim):");
+    if (!summary) return;
+    try {
+      await api.post(`/api/people/${selected}/medications/note`, { summary });
+      load(selected);
+    } catch {
+      setError("Could not save note — please try again.");
+    }
   }
 
   return (
@@ -167,52 +187,62 @@ export function Medications() {
       })}
 
       {isAdmin && (
-        adding ? (
-          <div className="border-4 rounded-2xl p-4 flex flex-col gap-2 max-w-xl">
-            <input
-              className="text-big p-2 border-4 rounded-xl"
-              placeholder="Name"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-            />
-            <input
-              className="text-big p-2 border-4 rounded-xl"
-              placeholder="Dose (e.g. 5 mg)"
-              value={form.dose}
-              onChange={e => setForm({ ...form, dose: e.target.value })}
-            />
-            <select
-              className="text-big p-2 border-4 rounded-xl"
-              value={form.slot}
-              onChange={e => setForm({ ...form, slot: e.target.value })}
-            >
-              {SLOTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
-            <input
-              className="text-big p-2 border-4 rounded-xl"
-              placeholder="For (optional)"
-              value={form.purpose}
-              onChange={e => setForm({ ...form, purpose: e.target.value })}
-            />
-            <input
-              className="text-big p-2 border-4 rounded-xl"
-              placeholder="Prescriber (optional)"
-              value={form.prescriber}
-              onChange={e => setForm({ ...form, prescriber: e.target.value })}
-            />
-            <input
-              className="text-big p-2 border-4 rounded-xl"
-              placeholder="Reason for the record (optional)"
-              value={form.reason}
-              onChange={e => setForm({ ...form, reason: e.target.value })}
-            />
-            <Button onClick={addMed} icon={<span aria-hidden>＋</span>}>Save medication</Button>
-          </div>
-        ) : (
-          <Button onClick={() => setAdding(true)} icon={<span aria-hidden>＋</span>}>
-            Add medication
-          </Button>
-        )
+        <>
+          {error && (
+            <p className="text-big text-red-700" role="alert">{error}</p>
+          )}
+          {adding ? (
+            <div className="border-4 rounded-2xl p-4 flex flex-col gap-2 max-w-xl">
+              <input
+                className="text-big p-2 border-4 rounded-xl"
+                placeholder="Name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+              />
+              <input
+                className="text-big p-2 border-4 rounded-xl"
+                placeholder="Dose (e.g. 5 mg)"
+                value={form.dose}
+                onChange={e => setForm({ ...form, dose: e.target.value })}
+              />
+              <select
+                className="text-big p-2 border-4 rounded-xl"
+                value={form.slot}
+                onChange={e => setForm({ ...form, slot: e.target.value })}
+              >
+                {SLOTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+              <input
+                className="text-big p-2 border-4 rounded-xl"
+                placeholder="For (optional)"
+                value={form.purpose}
+                onChange={e => setForm({ ...form, purpose: e.target.value })}
+              />
+              <input
+                className="text-big p-2 border-4 rounded-xl"
+                placeholder="Prescriber (optional)"
+                value={form.prescriber}
+                onChange={e => setForm({ ...form, prescriber: e.target.value })}
+              />
+              <input
+                className="text-big p-2 border-4 rounded-xl"
+                placeholder="Reason for the record (optional)"
+                value={form.reason}
+                onChange={e => setForm({ ...form, reason: e.target.value })}
+              />
+              <Button onClick={addMed} icon={<span aria-hidden>＋</span>}>Save medication</Button>
+            </div>
+          ) : (
+            <div className="flex gap-touch flex-wrap">
+              <Button onClick={() => setAdding(true)} icon={<span aria-hidden>＋</span>}>
+                Add medication
+              </Button>
+              <Button onClick={addNote} icon={<span aria-hidden>📝</span>}>
+                Add note
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <section>
