@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Today } from "../screens/Today";
 import { TodoScreen } from "../screens/TodoScreen";
+import { GroceryScreen } from "../screens/GroceryScreen";
 type Tab = "today" | "todo" | "grocery";
 export function ParentLayout() {
   const [tab, setTab] = useState<Tab>("today");
@@ -17,7 +18,7 @@ export function ParentLayout() {
       </nav>
       {tab === "today" && <Today />}
       {tab === "todo" && <TodoScreen />}
-      {/* GroceryScreen mounted in Task 9 */}
+      {tab === "grocery" && <GroceryScreen />}
     </div>
   );
 }
