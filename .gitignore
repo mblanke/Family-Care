@@ -7,3 +7,7 @@ frontend/dist/
 .pytest_cache/
 .mypy_cache/
 *.tsbuildinfo
+
+# Python build/venv artifacts
+*.egg-info/
+uv.lock
