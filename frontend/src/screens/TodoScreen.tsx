@@ -53,7 +53,7 @@ export function TodoScreen() {
 
   async function remove(t: Todo) {
     setToDelete(null);
-    await fetch(`/api/todos/${t.id}`, { method: "DELETE", credentials: "include" });
+    await api.delete(`/api/todos/${t.id}`);
     load();
   }
 
