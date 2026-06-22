@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models.appointment import Appointment
+from app.models.contact import Contact
 from app.models.user import User
-from app.services import auth, people, appointments, todos, grocery, birthdays
+from app.services import auth, people, appointments, todos, grocery, birthdays, contacts as contacts_svc
 
 _PEOPLE = [("Dad", "dad", "#1f6feb", 0), ("Mom", "mom", "#a371f7", 1)]
 
@@ -31,6 +32,9 @@ def seed(db: Session) -> None:
         grocery.add(db, name="Eggs", store="costco", created_by=admin.id)
         grocery.add(db, name="Milk", store="grocery", created_by=admin.id)
         birthdays.add(db, name="Mom", month=6, day=25, year=1941)
+    if db.scalar(select(Contact)) is None:
+        contacts_svc.create(db, name="Dr. Lee (Family Doctor)", role="doctor",
+                            phone="555-0100", is_emergency=False, sort_order=0)
 
 if __name__ == "__main__":
     db = SessionLocal()
