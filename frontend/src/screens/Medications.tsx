@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useAuth } from "../lib/auth";
 import { usePersonPicker } from "../lib/personPicker";
 import { Button } from "../components/Button";
+import { ScanReview } from "../admin/ScanReview";
 
 interface Med {
   id: number;
@@ -185,6 +186,10 @@ export function Medications() {
           </section>
         );
       })}
+
+      {isAdmin && selected != null && (
+        <ScanReview personId={selected} onAdded={() => load(selected)} />
+      )}
 
       {isAdmin && (
         <>
