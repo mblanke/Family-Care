@@ -13,7 +13,7 @@ export default {
       colors: {
         ink: "#111418",        // near-black text (AA on white)
         paper: "#ffffff",
-        brand: "#1f6feb",      // Brand/action color token
+        brand: "#0e7490",      // Brand/action color (buttons, nav) — distinct from the person colors; AA white text
         dad: "#1f6feb",        // Dad color token
         mom: "#a371f7",        // Mom color token
         confirm: "#1a7f37",    // success/confirmation (paired with icon+text, never alone)
