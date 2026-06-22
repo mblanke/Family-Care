@@ -5,13 +5,14 @@ import { TodoScreen } from "../screens/TodoScreen";
 import { GroceryScreen } from "../screens/GroceryScreen";
 import { Schedule } from "../screens/Schedule";
 import { Birthdays } from "../screens/Birthdays";
+import { Medications } from "../screens/Medications";
 import { MonthView } from "./MonthView";
 import { Accounts } from "./Accounts";
-type Tab = "today" | "schedule" | "todo" | "grocery" | "birthdays" | "accounts";
+type Tab = "today" | "schedule" | "todo" | "grocery" | "birthdays" | "meds" | "accounts";
 export function AdminLayout() {
   const [tab, setTab] = useState<Tab>("today");
   const tabs: [Tab, string][] = [["today","Today"],["schedule","Schedule"],["todo","To-do"],
-    ["grocery","Grocery"],["birthdays","Birthdays"],["accounts","Accounts"]];
+    ["grocery","Grocery"],["birthdays","Birthdays"],["meds","Medications"],["accounts","Accounts"]];
   return (
     <div className="flex flex-col gap-4">
       <nav className="flex flex-wrap gap-touch p-4">
@@ -26,6 +27,7 @@ export function AdminLayout() {
       {tab === "todo" && <TodoScreen />}
       {tab === "grocery" && <GroceryScreen />}
       {tab === "birthdays" && <Birthdays canEdit />}
+      {tab === "meds" && <Medications />}
       {tab === "accounts" && <Accounts />}
     </div>
   );
