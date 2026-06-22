@@ -1,6 +1,7 @@
 // admin/AdminLayout.tsx — fuller nav; wraps to iPhone width
 import { useState } from "react";
 import { Today } from "../screens/Today";
+import { TodoScreen } from "../screens/TodoScreen";
 type Tab = "today" | "schedule" | "todo" | "grocery" | "birthdays" | "accounts";
 export function AdminLayout() {
   const [tab, setTab] = useState<Tab>("today");
@@ -16,7 +17,8 @@ export function AdminLayout() {
         ))}
       </nav>
       {tab === "today" && <Today />}
-      {/* Schedule / Todo / Grocery / Birthdays / Accounts mounted in later tasks */}
+      {tab === "todo" && <TodoScreen />}
+      {/* Schedule / Grocery / Birthdays / Accounts mounted in later tasks */}
     </div>
   );
 }
