@@ -6,6 +6,7 @@ import { GroceryScreen } from "../screens/GroceryScreen";
 import { Schedule } from "../screens/Schedule";
 import { Birthdays } from "../screens/Birthdays";
 import { MonthView } from "./MonthView";
+import { Accounts } from "./Accounts";
 type Tab = "today" | "schedule" | "todo" | "grocery" | "birthdays" | "accounts";
 export function AdminLayout() {
   const [tab, setTab] = useState<Tab>("today");
@@ -25,6 +26,7 @@ export function AdminLayout() {
       {tab === "todo" && <TodoScreen />}
       {tab === "grocery" && <GroceryScreen />}
       {tab === "birthdays" && <Birthdays canEdit />}
+      {tab === "accounts" && <Accounts />}
     </div>
   );
 }
