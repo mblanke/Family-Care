@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "admin"
     mcp_token: str = "dev-mcp-token"
+    llm_router_url: str = ""
+    llm_router_token: str = ""
+    llm_router_vision_model: str = "claude-opus-4-8"
 
 @lru_cache
 def get_settings() -> Settings:
