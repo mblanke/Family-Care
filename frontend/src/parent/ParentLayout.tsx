@@ -4,7 +4,8 @@ import { Today } from "../screens/Today";
 import { TodoScreen } from "../screens/TodoScreen";
 import { GroceryScreen } from "../screens/GroceryScreen";
 import { Medications } from "../screens/Medications";
-type Tab = "today" | "todo" | "grocery" | "meds";
+import { BpLog } from "../screens/BpLog";
+type Tab = "today" | "todo" | "grocery" | "meds" | "bp";
 export function ParentLayout() {
   const [tab, setTab] = useState<Tab>("today");
   const T = ({ id, label }: { id: Tab; label: string }) => (
@@ -14,13 +15,14 @@ export function ParentLayout() {
   );
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex gap-touch p-4">
-        <T id="today" label="Today" /><T id="todo" label="To-do" /><T id="grocery" label="Grocery" /><T id="meds" label="Medications" />
+      <nav className="flex gap-touch p-4 flex-wrap">
+        <T id="today" label="Today" /><T id="todo" label="To-do" /><T id="grocery" label="Grocery" /><T id="meds" label="Medications" /><T id="bp" label="BP" />
       </nav>
       {tab === "today" && <Today />}
       {tab === "todo" && <TodoScreen />}
       {tab === "grocery" && <GroceryScreen />}
       {tab === "meds" && <Medications />}
+      {tab === "bp" && <BpLog />}
     </div>
   );
 }
