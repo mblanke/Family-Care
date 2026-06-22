@@ -22,6 +22,10 @@ dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.27", "mypy>=1.13"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+filterwarnings = [
+  # Starlette TestClient nudges toward a not-yet-released httpx2; benign third-party deprecation.
+  "ignore::starlette.exceptions.StarletteDeprecationWarning",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
