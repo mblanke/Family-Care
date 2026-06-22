@@ -22,7 +22,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${TAILSCALE_BIND:-0.0.0.0}:8080:8000"
+      - "${TAILSCALE_BIND:-127.0.0.1}:8080:8000"
     volumes:
       - medphotos:/data/med-photos
 
@@ -35,7 +35,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${TAILSCALE_BIND:-0.0.0.0}:8765:8765"
+      - "${TAILSCALE_BIND:-127.0.0.1}:8765:8765"
 
 volumes:
   pgdata:
