@@ -5,17 +5,13 @@ reachable only over Tailscale (`*.tail8d54ec.ts.net`).
 
 ## Bring it up
 
-> **Note:** The MCP service is a placeholder stub added in a later milestone. Only `db` and `api`
-> are functional in this release. The `mcp` service block exists in `docker-compose.yml` but its
-> implementation ships in a later plan.
-
 ```bash
 cp .env.example .env        # then edit secrets (SESSION_SECRET, passwords, MCP_TOKEN)
-docker compose up -d --build db api    # do NOT include mcp — it has no code yet
+docker compose up -d --build
 docker compose exec api python -m app.seed   # creates admin + Dad/Mom (idempotent)
 ```
 
-App: `http://<atlas-tailscale-ip>:8080` · MCP (future): `http://<atlas-tailscale-ip>:8765`
+App: `http://<atlas-tailscale-ip>:8080` · MCP: `http://<atlas-tailscale-ip>:8765`
 
 ## Accounts
 
@@ -93,6 +89,23 @@ medical advice and never decides what is "normal".
 The BP screen includes a **Print / Save PDF** link that opens a plain HTML summary of recent
 readings (including the attributed doctor target if set) in a new tab, ready for browser Print →
 Save as PDF to hand to a clinician.
+
+## Claude remote-control (MCP)
+
+The `mcp` service exposes family-hub to the Claude app over Tailscale (streamable HTTP, port 8765),
+protected by `MCP_TOKEN`. Add it in the Claude app as an MCP server:
+`http://<atlas-tailscale-ip>:8765` with the bearer token from your `.env`.
+
+It operates at **admin scope** and is a thin wrapper over the same service layer as the web app —
+no duplicated logic. It can read today/week/lists/meds/BP and add appointments, to-dos, grocery
+items, birthdays, and BP readings directly. Destructive actions (cancel an appointment, clear
+checked grocery items, log a medication change) **require an explicit confirmation** before they
+run. The MCP server never manages accounts or roles and never computes or suggests medication doses
+— account/permission changes and structured dose edits stay in the web UI, done by a human.
+
+> **Security:** `MCP_TOKEN` must be set in `.env`; the container always passes it at startup.
+> The service listens on `TAILSCALE_BIND` (docker-compose.yml) so it is never publicly reachable.
+> An unauthenticated or incorrectly-tokened request is rejected with 401.
 
 ## Migrations
 
