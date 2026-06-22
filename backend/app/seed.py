@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.config import get_settings
@@ -21,17 +21,19 @@ def seed(db: Session) -> None:
 
     admin = db.scalar(select(User).where(User.username == s.admin_username))
     if db.scalar(select(Appointment)) is None and admin:
+        now = datetime.now()
         appointments.create(db, title="Pay bills at bank",
-                            start=datetime(2026, 7, 5, 10, 0),
+                            start=now.replace(day=5, hour=10, minute=0, second=0, microsecond=0),
                             location="Bank", recurrence="monthly", recur_day=5,
                             created_by=admin.id)
         appointments.create(db, title="Cardiology follow-up",
-                            start=datetime(2026, 7, 9, 14, 0),
+                            start=now.replace(hour=14, minute=0, second=0, microsecond=0),
                             needs_ride=True, created_by=admin.id)
         todos.add(db, text="Refill Dad's pill pack", created_by=admin.id)
         grocery.add(db, name="Eggs", store="costco", created_by=admin.id)
         grocery.add(db, name="Milk", store="grocery", created_by=admin.id)
-        birthdays.add(db, name="Mom", month=6, day=25, year=1941)
+        bday = (now + timedelta(days=5)).date()
+        birthdays.add(db, name="Mom", month=bday.month, day=bday.day, year=1941)
     if db.scalar(select(Contact)) is None:
         contacts_svc.create(db, name="Dr. Lee (Family Doctor)", role="doctor",
                             phone="555-0100", is_emergency=False, sort_order=0)
