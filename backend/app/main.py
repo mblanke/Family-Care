@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.routers import auth, people, appointments, todos, grocery, birthdays, today, accounts, medications
+from app.routers import auth, people, appointments, todos, grocery, birthdays, today, accounts, medications, bp
 
 app = FastAPI(title="family-hub")
 app.include_router(auth.router)
@@ -14,6 +14,7 @@ app.include_router(birthdays.router)
 app.include_router(today.router)
 app.include_router(accounts.router)
 app.include_router(medications.router)
+app.include_router(bp.router)
 
 @app.get("/healthz")
 def healthz():
