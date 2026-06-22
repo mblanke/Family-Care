@@ -114,3 +114,24 @@ Schema changes ship as Alembic migrations and run automatically on `api` contain
 ```bash
 docker compose exec api alembic revision --autogenerate -m "msg"
 ```
+
+## Medication-label scan (optional, admin-only)
+
+On the admin Medications screen, "📷 Scan label" photographs a pharmacy label and pre-fills the
+medication form via your `llm-router` hosted vision model (set `LLM_ROUTER_URL`, `LLM_ROUTER_TOKEN`,
+`LLM_ROUTER_VISION_MODEL` in `.env`). The scan only transcribes text — it never saves, computes, or
+interprets anything; you review and confirm every field, and the normal add path does the write.
+Manual entry always works, with or without the router configured.
+
+> **Manual verification required:** Point the scan at a real pharmacy label with a configured
+> llm-router and verify on the iPad. The automated tests use a fake extractor and never hit the
+> network; the real router contract is verified in production only.
+
+### Backup: medication photos
+
+If "Keep photo with this entry" is used, images live in the `medphotos` Docker volume
+(`/data/med-photos`). Back it up alongside the database:
+```bash
+docker run --rm -v family-hub_medphotos:/v -v "$PWD":/out alpine tar czf /out/medphotos-$(date +%F).tgz -C /v .
+```
+(Note the volume name may be prefixed by the compose project name; adjust if needed.)
