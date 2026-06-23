@@ -25,6 +25,10 @@ services:
         condition: service_healthy
     ports:
       - "${TAILSCALE_BIND:-127.0.0.1}:8080:8000"
+    # Lets the optional med-scan reach a host-published service (e.g. an llm-router
+    # on the host's :4000) via http://host.docker.internal:<port>. Harmless if unused.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - medphotos:/data/med-photos
 
