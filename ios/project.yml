@@ -32,6 +32,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~iphone:
           - UIInterfaceOrientationPortrait
+        # Standard HTTPS only — exempt from export-compliance questioning.
+        ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: Used to photograph a pharmacy label so the medication form can be pre-filled. Photos are reviewed by you before anything is saved.
         NSPhotoLibraryUsageDescription: Lets you choose an existing photo of a pharmacy label to pre-fill the medication form.
         # Server lives on the Tailscale tailnet over plain HTTP (no public exposure).
