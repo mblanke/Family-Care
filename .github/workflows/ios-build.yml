@@ -1,12 +1,15 @@
 name: iOS build check
 
 # Compiles the SwiftUI app for the simulator and runs the unit tests on every
-# pull request that touches ios/. The UI test is excluded because it needs the
+# pull request, and every push to a feature branch, that touches ios/. The UI test is excluded because it needs the
 # live Tailscale server. A screenshot of the Login screen is uploaded as an
 # artifact so the fonts and materials can be eyeballed without a Mac.
 
 on:
   pull_request:
+    paths: ["ios/**", ".github/workflows/ios-build.yml"]
+  push:
+    branches-ignore: [main]
     paths: ["ios/**", ".github/workflows/ios-build.yml"]
   workflow_dispatch:
 
