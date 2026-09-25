@@ -15,7 +15,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .grocery: return "Grocery"
         case .birthdays: return "Birthdays"
         case .medications: return "Medications"
-        case .bp: return "Blood Pressure"
+        case .bp: return "Blood pressure"
         case .accounts: return "Accounts"
         case .contacts: return "Contacts"
         }
@@ -28,11 +28,11 @@ enum Screen: String, CaseIterable, Identifiable {
         case .month: return "calendar.badge.clock"
         case .todo: return "checklist"
         case .grocery: return "cart.fill"
-        case .birthdays: return "gift.fill"
+        case .birthdays: return "birthday.cake.fill"
         case .medications: return "pills.fill"
         case .bp: return "heart.fill"
-        case .accounts: return "person.2.fill"
-        case .contacts: return "phone.fill"
+        case .accounts: return "key.fill"
+        case .contacts: return "person.fill"
         }
     }
 
@@ -83,15 +83,18 @@ struct AppShellView: View {
 
     @State private var columnVisibility = NavigationSplitViewVisibility.all
 
-    // iPad: sidebar navigation.
+    // iPad: sidebar navigation on the platinum ground.
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(tabs, selection: Binding(get: { Optional(selection) }, set: { selection = $0 ?? .today })) { screen in
                 Label(screen.title, systemImage: screen.icon)
-                    .fhFont(.base, weight: .semibold)
+                    .fhFont(.base, weight: .bold)
                     .frame(minHeight: FH.minTouch - 16)
                     .tag(screen)
             }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .groundBackground()
             .navigationTitle(session.appDisplayName)
             .toolbar { headerToolbar }
         } detail: {
@@ -99,6 +102,7 @@ struct AppShellView: View {
                 screenView(selection)
                     .navigationTitle(selection.title)
                     .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackground(.visible, for: .navigationBar)
             }
         }
     }
@@ -111,6 +115,7 @@ struct AppShellView: View {
                     screenView(screen)
                         .navigationTitle(screen == .today ? session.appDisplayName : screen.title)
                         .toolbar { headerToolbar }
+                        .toolbarBackground(.visible, for: .navigationBar)
                 }
                 .tabItem { Label(screen.title, systemImage: screen.icon) }
                 .tag(screen)
@@ -121,20 +126,37 @@ struct AppShellView: View {
     @ToolbarContentBuilder
     private var headerToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
+            let large = session.fontScale > 1
             Button {
                 Task { await session.toggleFontScale() }
             } label: {
-                Text(session.fontScale > 1 ? "Aa Normal" : "Aa Larger")
-                    .fhFont(.small, weight: .semibold)
+                HStack(spacing: 6) {
+                    Text("Aa").fhDisplay(.small)
+                    Text(large ? "Normal text" : "Larger text").fhFont(.small, weight: .bold)
+                }
+                .foregroundStyle(FH.ink)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 40)
+                .chrome()
             }
-            .accessibilityLabel(session.fontScale > 1 ? "Switch to normal text size" : "Switch to larger text size")
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel(large ? "Switch to normal text size" : "Switch to larger text size")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Task { await session.logout() }
             } label: {
-                Text("Sign out").fhFont(.small, weight: .semibold)
+                HStack(spacing: 6) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Text("Sign out").fhFont(.small, weight: .bold)
+                }
+                .foregroundStyle(FH.ink)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 40)
+                .chrome()
             }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Sign out")
         }
     }
 

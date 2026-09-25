@@ -8,137 +8,122 @@ struct GroceryView: View {
     @State private var newStore = "either"     // item store vocab: costco | grocery | either
     @State private var confirmClear = false
 
-    private static let storeLabels = ["costco": "Costco", "grocery": "Grocery", "either": "Either"]
+    private static let storeLabels = ["costco": "Costco", "grocery": "Grocery store", "either": "Either store"]
 
-    /// In "All", group by store section; otherwise a single section.
-    private var sections: [(title: String?, items: [GroceryItem])] {
+    /// In "All", one section per store (empty ones say so); otherwise a single section.
+    private var sections: [(key: String, title: String?, items: [GroceryItem])] {
         let sorted = { (group: [GroceryItem]) in
             group.sorted { (!$0.checked && $1.checked) || ($0.checked == $1.checked && $0.id < $1.id) }
         }
         if filter == "all" {
-            return ["costco", "grocery", "either"].compactMap { store in
-                let group = items.filter { $0.store == store }
-                return group.isEmpty ? nil : (Self.storeLabels[store], sorted(group))
+            return ["costco", "grocery", "either"].map { store in
+                (store, Self.storeLabels[store], sorted(items.filter { $0.store == store }))
             }
         }
-        return [(nil, sorted(items))]
+        return [(filter, Self.storeLabels[filter], sorted(items))]
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                SegControl(options: [("costco", "Costco"), ("grocery", "Grocery"), ("all", "All")],
+                ScreenHeading(text: "Grocery")
+
+                SegControl(options: [("costco", "Costco"), ("grocery", "Grocery store"), ("all", "All")],
                            selection: $filter)
+                .accessibilityLabel("Which store")
 
-                HStack(spacing: 10) {
-                    TextField("Add an item…", text: $newName)
-                        .textFieldStyle(.roundedBorder)
-                        .fhFont(.base)
-                        .onSubmit { Task { await add() } }
-                    Picker("Store", selection: $newStore) {
-                        Text("Either").tag("either")
-                        Text("Costco").tag("costco")
-                        Text("Grocery").tag("grocery")
+                Card {
+                    HStack(spacing: 10) {
+                        TextField("Add an item", text: $newName)
+                            .fhField()
+                            .fhFont(.base)
+                            .onSubmit { Task { await add() } }
+                            .accessibilityLabel("New grocery item")
+                        Picker("Store", selection: $newStore) {
+                            Text("Either store").tag("either")
+                            Text("Costco").tag("costco")
+                            Text("Grocery store").tag("grocery")
+                        }
+                        .pickerStyle(.menu)
+                        .tint(FH.ink)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: FH.minTouch)
+                        .chrome(radius: FH.fieldRadius)
+                        BigButton(title: "Add", icon: "plus", fullWidth: false) {
+                            Task { await add() }
+                        }
+                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .pickerStyle(.menu)
-                    .frame(minHeight: FH.minTouch)
-                    Button {
-                        Task { await add() }
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                            .fhFont(.base, weight: .semibold)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: FH.minTouch)
-                            .background(FH.brand, in: RoundedRectangle(cornerRadius: 14))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
-                ForEach(sections, id: \.title) { section in
-                    if let title = section.title {
-                        Text(title).fhFont(.base, weight: .bold).foregroundStyle(.secondary)
+                ForEach(sections, id: \.key) { section in
+                    Card(title: section.title, icon: "cart.fill") {
+                        if section.items.isEmpty {
+                            Text(filter == "all" ? "Nothing needed." : "Nothing on this list yet.")
+                                .fhFont(.base)
+                                .foregroundStyle(FH.inkSoft)
+                        }
+                        ForEach(section.items) { item in
+                            row(item)
+                        }
                     }
-                    ForEach(section.items) { item in
-                        row(item)
-                    }
-                }
-                if items.isEmpty {
-                    Card { Text("List is empty.").fhFont(.base) }
                 }
 
                 if items.contains(where: \.checked) {
-                    BigButton(title: "Clear checked items", icon: "trash", background: FH.danger) {
+                    BigButton(title: "Remove checked items", icon: "trash", variant: .secondary) {
                         confirmClear = true
                     }
                 }
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task(id: filter) { await load() }
         .refreshable { await load() }
-        .confirmationDialog("Clear all checked items?", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("Clear checked", role: .destructive) { Task { await clearChecked() } }
+        .confirmationDialog("Remove all checked items?", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) { Task { await clearChecked() } }
             Button("Keep them", role: .cancel) {}
+        } message: {
+            Text("They come off the list for everyone.")
         }
     }
 
     private func row(_ item: GroceryItem) -> some View {
-        Card {
-            HStack(spacing: 14) {
-                Button {
-                    Task { await check(item) }
-                } label: {
-                    Image(systemName: item.checked ? "checkmark.square.fill" : "square")
-                        .fhFont(.big, weight: .bold)
-                        .foregroundStyle(item.checked ? FH.confirm : FH.ink)
-                        .frame(width: FH.minTouch, height: FH.minTouch)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.checked ? "Uncheck \(item.name)" : "Check \(item.name)")
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .fhFont(.base)
-                        .strikethrough(item.checked)
-                    if filter != "all" || item.store == "either" {
-                        Text(Self.storeLabels[item.store] ?? item.store)
-                            .fhFont(.small)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                qtyStepper(item)
+        HStack(spacing: 14) {
+            CheckSquare(done: item.checked, itemName: item.name) {
+                Task { await check(item) }
             }
-            .opacity(item.checked ? 0.5 : 1)
-        }
-    }
 
-    private func qtyStepper(_ item: GroceryItem) -> some View {
-        HStack(spacing: 8) {
-            qtyButton("minus", "Decrease quantity of \(item.name)") { Task { await setQty(item, item.qty - 1) } }
-            Text("\(item.qty)")
-                .fhFont(.base, weight: .bold)
-                .frame(minWidth: 36)
-                .monospacedDigit()
-            qtyButton("plus", "Increase quantity of \(item.name)") { Task { await setQty(item, item.qty + 1) } }
-        }
-    }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .fhFont(.big)
+                    .strikethrough(item.checked)
+                    .foregroundStyle(item.checked ? FH.inkSoft : FH.ink)
+                if filter != "all" && item.store == "either" {
+                    Text("Either store")
+                        .fhFont(.small)
+                        .foregroundStyle(FH.inkSoft)
+                }
+            }
 
-    private func qtyButton(_ icon: String, _ a11y: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .fhFont(.base, weight: .bold)
-                .frame(width: FH.minTouch, height: FH.minTouch)
-                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
+            Spacer(minLength: 0)
+
+            if item.checked {
+                Text("\(item.qty)")
+                    .fhDisplay(.big)
+                    .foregroundStyle(FH.inkSoft)
+                    .frame(minWidth: 56)
+            } else {
+                BigStepper(label: item.name,
+                           value: Binding(get: { item.qty }, set: { newValue in Task { await setQty(item, newValue) } }),
+                           range: 1...999,
+                           size: .base,
+                           showLabel: false,
+                           downLabel: "One fewer \(item.name)",
+                           upLabel: "One more \(item.name)")
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(a11y)
+        .opacity(item.checked ? 0.6 : 1)
     }
 
     private func load() async {
@@ -146,6 +131,8 @@ struct GroceryView: View {
         if filter != "all" { query.append(URLQueryItem(name: "store", value: filter)) }
         if let list: [GroceryItem] = try? await APIClient.shared.get("/api/grocery", query: query) {
             items = list
+        } else if items.isEmpty {
+            banners.error("Couldn't load the list. Please try again.")
         }
     }
 
@@ -156,10 +143,10 @@ struct GroceryView: View {
         do {
             let _: GroceryItem = try await APIClient.shared.post("/api/grocery", GroceryIn(name: name, store: newStore))
             newName = ""
-            banners.confirm("Added")
+            banners.confirm("Added to the list")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't add the item. Please try again.")
         }
     }
 
@@ -169,27 +156,28 @@ struct GroceryView: View {
             let _: GroceryItem = try await APIClient.shared.post("/api/grocery/\(item.id)/check", CheckIn(checked: !item.checked))
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't save. Please try again.")
         }
     }
 
     private func setQty(_ item: GroceryItem, _ qty: Int) async {
+        guard qty != item.qty else { return }
         struct QtyIn: Encodable { var qty: Int }
         do {
             let _: GroceryItem = try await APIClient.shared.post("/api/grocery/\(item.id)/qty", QtyIn(qty: max(1, qty)))
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't save. Please try again.")
         }
     }
 
     private func clearChecked() async {
         do {
             let _: RemovedOut = try await APIClient.shared.post("/api/grocery/clear-checked")
-            banners.confirm("Cleared checked items")
+            banners.confirm("Removed checked items")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't remove the checked items. Please try again.")
         }
     }
 }

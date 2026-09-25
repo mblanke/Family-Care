@@ -12,42 +12,44 @@ struct TodoView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HStack(spacing: 10) {
-                    TextField("Add something…", text: $newText)
-                        .textFieldStyle(.roundedBorder)
-                        .fhFont(.base)
-                        .onSubmit { Task { await add() } }
-                    Button {
-                        Task { await add() }
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                            .fhFont(.base, weight: .semibold)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: FH.minTouch)
-                            .background(FH.brand, in: RoundedRectangle(cornerRadius: 14))
+                ScreenHeading(text: "To-do")
+
+                Card {
+                    HStack(spacing: 10) {
+                        TextField("Add an item", text: $newText)
+                            .fhField()
+                            .fhFont(.base)
+                            .onSubmit { Task { await add() } }
+                            .accessibilityLabel("New to-do item")
+                        BigButton(title: "Add", icon: "plus", fullWidth: false) {
+                            Task { await add() }
+                        }
+                        .disabled(newText.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(newText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
-                ForEach(open) { todo in
-                    row(todo)
-                }
-                if open.isEmpty {
-                    Card { Text("Nothing on the list.").fhFont(.base) }
+                Card {
+                    if open.isEmpty {
+                        Text("Nothing on the list. Add something above.")
+                            .fhFont(.big)
+                            .foregroundStyle(FH.inkSoft)
+                    }
+                    ForEach(open) { todo in
+                        row(todo)
+                    }
                 }
 
                 if !done.isEmpty {
-                    ScreenHeading(text: "Done")
-                    ForEach(done) { todo in
-                        row(todo).opacity(0.7)
+                    Card(title: "Done", icon: "checkmark") {
+                        ForEach(done) { todo in
+                            row(todo).opacity(0.8)
+                        }
                     }
                 }
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
         .confirmationDialog("Remove this item?", isPresented: Binding(
@@ -62,36 +64,17 @@ struct TodoView: View {
     }
 
     private func row(_ todo: Todo) -> some View {
-        Card {
-            HStack(spacing: 14) {
-                Button {
-                    Task { await toggle(todo) }
-                } label: {
-                    Image(systemName: todo.done ? "checkmark.square.fill" : "square")
-                        .fhFont(.big, weight: .bold)
-                        .foregroundStyle(todo.done ? FH.confirm : FH.ink)
-                        .frame(width: FH.minTouch, height: FH.minTouch)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(todo.done ? "Mark \(todo.text) as not done" : "Check off \(todo.text)")
-
-                Text(todo.text)
-                    .fhFont(.base)
-                    .strikethrough(todo.done)
-
-                Spacer(minLength: 0)
-
-                Button {
-                    pendingDelete = todo
-                } label: {
-                    Image(systemName: "trash")
-                        .fhFont(.base)
-                        .foregroundStyle(FH.danger)
-                        .frame(width: FH.minTouch, height: FH.minTouch)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Remove \(todo.text)")
+        HStack(spacing: 14) {
+            CheckSquare(done: todo.done, itemName: todo.text) {
+                Task { await toggle(todo) }
+            }
+            Text(todo.text)
+                .fhFont(.big)
+                .strikethrough(todo.done)
+                .foregroundStyle(todo.done ? FH.inkSoft : FH.ink)
+            Spacer(minLength: 0)
+            IconButton(systemName: "trash", label: "Delete \(todo.text)") {
+                pendingDelete = todo
             }
         }
     }
@@ -99,6 +82,8 @@ struct TodoView: View {
     private func load() async {
         if let list: [Todo] = try? await APIClient.shared.get("/api/todos") {
             todos = list
+        } else if todos.isEmpty {
+            banners.error("Couldn't load the list. Please try again.")
         }
     }
 
@@ -112,7 +97,7 @@ struct TodoView: View {
             banners.confirm("Added to the list")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't add the item. Please try again.")
         }
     }
 
@@ -120,19 +105,20 @@ struct TodoView: View {
         struct DoneIn: Encodable { var done: Bool }
         do {
             let _: Todo = try await APIClient.shared.post("/api/todos/\(todo.id)/done", DoneIn(done: !todo.done))
-            if !todo.done { banners.confirm("Checked off ✓") }
+            if !todo.done { banners.confirm("Checked off") }
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't save. Please try again.")
         }
     }
 
     private func remove(_ todo: Todo) async {
         do {
             let _: OkOut = try await APIClient.shared.delete("/api/todos/\(todo.id)")
+            banners.confirm("Removed")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't remove the item. Please try again.")
         }
     }
 }

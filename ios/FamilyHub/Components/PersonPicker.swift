@@ -16,30 +16,40 @@ final class PeopleStore {
     }
 }
 
+/// Chrome tray of person chips; the chosen one lit in brand metal, the person's
+/// colour as a dot beside the name (never colour alone).
 struct PersonPicker: View {
     var people: [Person]
     @Binding var selected: Person?
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(people) { person in
+                let active = selected?.id == person.id
                 Button {
                     selected = person
                 } label: {
-                    HStack(spacing: 6) {
-                        Circle().fill(FH.personColor(person)).frame(width: 14, height: 14)
-                        Text(person.name).fhFont(.base, weight: selected?.id == person.id ? .bold : .regular)
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(active ? Color.white : FH.personColor(person))
+                            .overlay(Circle().strokeBorder(FH.personColor(person), lineWidth: 3))
+                            .frame(width: 16, height: 16)
+                        Text(person.name).fhFont(.base, weight: .bold)
                     }
-                    .foregroundStyle(selected?.id == person.id ? .white : FH.ink)
-                    .frame(maxWidth: .infinity, minHeight: FH.minTouch)
-                    .background(
-                        selected?.id == person.id ? FH.brand : Color(.systemGray5),
-                        in: RoundedRectangle(cornerRadius: 12)
-                    )
+                    .foregroundStyle(active ? Color.white : FH.ink)
+                    .padding(.horizontal, 18)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .background {
+                        if active { MetalSurface(tone: .brand) }
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected?.id == person.id ? [.isSelected] : [])
+                .buttonStyle(PressableStyle())
+                .accessibilityAddTraits(active ? [.isSelected] : [])
             }
         }
+        .padding(6)
+        .chrome()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Whose record")
     }
 }

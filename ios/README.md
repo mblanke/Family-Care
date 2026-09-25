@@ -13,8 +13,13 @@ using the same session-cookie login. No backend changes required.
 - `FamilyHub/App` — app entry, session state, role-based shell (parent: 6 tabs, Today-first;
   admin/family: full nav; iPad uses a sidebar)
 - `FamilyHub/Screens` — one view per screen, mirroring the web behavior
-- `FamilyHub/Lib` — design tokens (`Theme.swift`) and verbatim datetime formatting
-  (`Format.swift` — API datetimes are naive strings, never re-zoned)
+- `FamilyHub/Components` — the "liquid metal" materials (`Materials.swift`: platinum ground,
+  glass cards, chrome controls, metal action fills, field style) and shared controls
+  (`Controls.swift`: BigButton variants, SegControl, BigStepper, CheckSquare, Card, Well, Chip)
+- `FamilyHub/Fonts` — Sora (headings) and Atkinson Hyperlegible (text), registered via
+  `UIAppFonts` in `project.yml`; OFL licences alongside
+- `FamilyHub/Lib` — design tokens (`Theme.swift`, mirrors `frontend/tailwind.config.ts`) and
+  verbatim datetime formatting (`Format.swift` — API datetimes are naive strings, never re-zoned)
 - `FamilyHubTests` / `FamilyHubUITests` — decoding/format units + a live to-do flow UI test
 - `docs/api-contract.md` — the audited REST contract this app consumes
 
@@ -35,6 +40,14 @@ Debug-only simulator hooks (not compiled into Release): env vars `FH_AUTO_USER` 
 ## TestFlight
 
 Bundle ID `com.blanke.homeboard`, display name "Home Board", deployment target iOS 17.
-Archive in Xcode → upload → add family as **internal testers** (no App Review; the server
-is Tailscale-only so reviewers could never reach it). Each device needs the Tailscale app
-on the tailnet plus TestFlight.
+Two GitHub Actions workflows cover releases:
+
+- `.github/workflows/ios-build.yml` runs on every pull request touching `ios/`: XcodeGen,
+  a simulator build, the unit tests, and a screenshot of the Login screen as an artifact.
+- `.github/workflows/testflight.yml` runs on every push to `main` touching `ios/` (or by
+  manual dispatch): archives with the App Store Connect API key in the repo secrets and
+  uploads to TestFlight. The build number is the workflow run number.
+
+Then add family as **internal testers** (no App Review; the server is Tailscale-only so
+reviewers could never reach it). Each device needs the Tailscale app on the tailnet plus
+TestFlight.

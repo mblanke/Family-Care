@@ -11,43 +11,55 @@ struct ScheduleView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                ScreenHeading(text: "This week")
+
                 if let week {
                     // Driver roll-up
-                    Card {
-                        Text("🚗 What I'm driving this week").fhFont(.base, weight: .bold)
+                    Card(title: "Rides someone is driving this week", icon: "car.fill") {
                         if week.driverRuns.isEmpty {
-                            Text("No rides needed this week.").fhFont(.base).foregroundStyle(.secondary)
+                            Text("No rides needed this week.").fhFont(.big)
                         } else {
                             ForEach(week.driverRuns) { run in
-                                Text("\(Format.time(run.start)) — \(run.title)\(run.location.map { " · \($0)" } ?? "")")
-                                    .fhFont(.base)
+                                HStack(alignment: .center, spacing: 12) {
+                                    Chip(text: Format.time(run.start))
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Text(run.title).fhFont(.big)
+                                        Text(Format.day(String(run.start.prefix(10)))
+                                             + (run.location.map { " · \($0)" } ?? ""))
+                                            .fhFont(.base)
+                                            .foregroundStyle(FH.inkSoft)
+                                    }
+                                }
                             }
                         }
                     }
+                    .overlay(RoundedRectangle(cornerRadius: FH.cardRadius, style: .continuous)
+                                .strokeBorder(FH.brand.opacity(0.5), lineWidth: 2))
 
                     if session.canEditSchedule {
-                        BigButton(title: "Add appointment", icon: "plus") {
+                        BigButton(title: "Add appointment", icon: "plus", fullWidth: false) {
                             editing = nil
                             showForm = true
                         }
                     }
 
                     ForEach(week.days) { day in
-                        Text(Format.day(day.date)).fhFont(.base, weight: .bold)
-                        if day.appointments.isEmpty {
-                            Text("Nothing scheduled").fhFont(.small).foregroundStyle(.secondary)
-                        } else {
+                        Card(title: Format.day(day.date)) {
+                            if day.appointments.isEmpty {
+                                Text("Nothing scheduled").fhFont(.base).foregroundStyle(FH.inkSoft)
+                            }
                             ForEach(day.appointments) { occurrence in
                                 if session.canEditSchedule {
                                     Button {
                                         editing = occurrence
                                         showForm = true
                                     } label: {
-                                        AppointmentCard(occurrence: occurrence)
+                                        AppointmentCard(occurrence: occurrence, people: people)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityHint("Opens the appointment to edit it")
                                 } else {
-                                    AppointmentCard(occurrence: occurrence)
+                                    AppointmentCard(occurrence: occurrence, people: people)
                                 }
                             }
                         }
@@ -58,7 +70,7 @@ struct ScheduleView: View {
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
         .sheet(isPresented: $showForm) {
@@ -110,8 +122,8 @@ struct AppointmentFormSheet: View {
                     }
                     TextField("Location (optional)", text: $location)
                 }
-                Section("Who") {
-                    Toggle("Both", isOn: $forBoth)
+                Section("Who it's for") {
+                    Toggle("Everyone", isOn: $forBoth).tint(FH.brand)
                     if !forBoth {
                         Picker("Person", selection: $personId) {
                             Text("Choose…").tag(Int?.none)
@@ -122,8 +134,8 @@ struct AppointmentFormSheet: View {
                     }
                 }
                 Section {
-                    Toggle("🚗 Needs a ride", isOn: $needsRide)
-                    Toggle("🔁 Repeat monthly", isOn: $repeatMonthly)
+                    Toggle(isOn: $needsRide) { Label("Needs a ride", systemImage: "car.fill") }.tint(FH.brand)
+                    Toggle(isOn: $repeatMonthly) { Label("Repeats monthly", systemImage: "repeat") }.tint(FH.brand)
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                 }
                 if editing != nil {
@@ -131,15 +143,17 @@ struct AppointmentFormSheet: View {
                         Button("Cancel this appointment", role: .destructive) { confirmCancel = true }
                     }
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle(editing == nil ? "Add appointment" : "Edit appointment")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle(editing == nil ? "New appointment" : "Edit appointment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button(editing == nil ? "Save" : "Update") { Task { await save() } }
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -215,7 +229,7 @@ struct AppointmentFormSheet: View {
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't save the appointment. Please try again."
         }
     }
 

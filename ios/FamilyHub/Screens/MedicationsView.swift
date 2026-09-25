@@ -23,51 +23,71 @@ struct MedicationsView: View {
         }
     }
 
-    private static let slots = [("morning", "Morning"), ("noon", "Noon"), ("evening", "Evening"), ("bedtime", "Bedtime")]
+    private static let slots: [(key: String, label: String, icon: String)] = [
+        ("morning", "Morning", "sun.max.fill"),
+        ("noon", "Noon", "clock.fill"),
+        ("evening", "Evening", "moon.fill"),
+        ("bedtime", "Bedtime", "bed.double.fill"),
+    ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("This is a record to share with a doctor — not medical advice.")
-                    .fhFont(.small, weight: .semibold)
-                    .foregroundStyle(.secondary)
+                ScreenHeading(text: "Medications")
 
                 PersonPicker(people: people.people, selected: $people.selected)
 
+                Text("A personal record to share with your doctor or pharmacist. Not medical advice.")
+                    .fhFont(.base)
+                    .foregroundStyle(FH.inkSoft)
+
                 if let regimen {
-                    ForEach(Self.slots, id: \.0) { slot, label in
-                        let meds = regimen.regimen.filter { $0.active && $0.slot == slot }
+                    let active = regimen.regimen.filter(\.active)
+                    if active.isEmpty {
+                        Card {
+                            Text("No medications recorded\(people.selected.map { " for \($0.name)" } ?? "").")
+                                .fhFont(.big)
+                                .foregroundStyle(FH.inkSoft)
+                        }
+                    }
+                    ForEach(Self.slots, id: \.key) { slot in
+                        let meds = active.filter { $0.slot == slot.key }
                         if !meds.isEmpty {
-                            Text(label).fhFont(.base, weight: .bold)
-                            ForEach(meds) { med in
-                                medCard(med)
+                            Card(title: slot.label, icon: slot.icon) {
+                                ForEach(meds) { med in
+                                    medRow(med)
+                                }
                             }
                         }
                     }
-                    if regimen.regimen.filter(\.active).isEmpty {
-                        Card { Text("No current medications recorded.").fhFont(.base) }
-                    }
 
                     if session.isAdmin {
-                        BigButton(title: "Add medication", icon: "plus") { activeSheet = .add }
-                        BigButton(title: "Add a note", icon: "square.and.pencil", background: Color(.systemGray)) {
-                            activeSheet = .note
+                        HStack(spacing: 12) {
+                            BigButton(title: "Add medication", icon: "plus", fullWidth: false) { activeSheet = .add }
+                            BigButton(title: "Add a note", icon: "note.text", variant: .secondary, fullWidth: false) {
+                                activeSheet = .note
+                            }
                         }
                         if let person = people.selected {
                             ScanReviewView(person: person) { await load() }
                         }
                     }
 
-                    if !regimen.history.isEmpty {
-                        ScreenHeading(text: "Change history")
+                    Card(title: "Change history", icon: "clock.fill") {
+                        if regimen.history.isEmpty {
+                            Text("No changes recorded yet.").fhFont(.base).foregroundStyle(FH.inkSoft)
+                        }
                         ForEach(regimen.history) { change in
-                            Card {
-                                Text(Format.dayAndTime(change.recordedAt))
-                                    .fhFont(.small)
-                                    .foregroundStyle(.secondary)
-                                Text(change.summary).fhFont(.base)
-                                if let reason = change.reason, !reason.isEmpty {
-                                    Text("Reason: \(reason)").fhFont(.small).foregroundStyle(.secondary)
+                            HStack(alignment: .top, spacing: 12) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(FH.brand.opacity(0.6))
+                                    .frame(width: 4)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(Format.longDate(change.recordedAt)).fhFont(.base, weight: .bold)
+                                    Text(change.summary).fhFont(.base)
+                                    if let reason = change.reason, !reason.isEmpty {
+                                        Text("(\(reason))").fhFont(.base).foregroundStyle(FH.inkSoft).italic()
+                                    }
                                 }
                             }
                         }
@@ -78,7 +98,7 @@ struct MedicationsView: View {
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await people.load(); await load() }
         .onChange(of: people.selected?.id) { Task { await load() } }
         .refreshable { await load() }
@@ -96,26 +116,26 @@ struct MedicationsView: View {
         }
     }
 
-    private func medCard(_ med: Med) -> some View {
-        Card {
-            Text("\(med.name) — \(med.dose)\(med.prn ? " (as needed)" : "")")
-                .fhFont(.base, weight: .bold)
-            if let purpose = med.purpose, !purpose.isEmpty {
-                Text("For: \(purpose)").fhFont(.small).foregroundStyle(.secondary)
+    private func medRow(_ med: Med) -> some View {
+        let details = [
+            med.purpose.flatMap { $0.isEmpty ? nil : "For \($0)" },
+            med.prescriber.flatMap { $0.isEmpty ? nil : "Prescribed by \($0)" },
+        ].compactMap { $0 }.joined(separator: " · ")
+        return Well {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(med.name).fhFont(.big, weight: .bold)
+                Chip(text: med.dose)
+                if med.prn {
+                    Text("as needed").fhFont(.base).foregroundStyle(FH.inkSoft)
+                }
             }
-            if let prescriber = med.prescriber, !prescriber.isEmpty {
-                Text("Prescriber: \(prescriber)").fhFont(.small).foregroundStyle(.secondary)
+            if !details.isEmpty {
+                Text(details).fhFont(.base).foregroundStyle(FH.inkSoft)
             }
             if session.isAdmin {
                 HStack(spacing: 10) {
-                    Button("Change dose") { activeSheet = .dose(med) }
-                        .fhFont(.small, weight: .semibold)
-                        .frame(minHeight: FH.minTouch - 16)
-                        .buttonStyle(.bordered)
-                    Button("Stop", role: .destructive) { activeSheet = .stop(med) }
-                        .fhFont(.small, weight: .semibold)
-                        .frame(minHeight: FH.minTouch - 16)
-                        .buttonStyle(.bordered)
+                    BigButton(title: "Change dose", variant: .secondary, fullWidth: false) { activeSheet = .dose(med) }
+                    BigButton(title: "Stop medication", variant: .secondary, fullWidth: false) { activeSheet = .stop(med) }
                 }
             }
         }
@@ -126,11 +146,13 @@ struct MedicationsView: View {
         // Keep stale data on network failure, like the web does.
         if let data: Regimen = try? await APIClient.shared.get("/api/people/\(person.id)/medications") {
             regimen = data
+        } else if regimen == nil {
+            banners.error("Couldn't load the medication record. Please try again.")
         }
     }
 }
 
-// MARK: - Admin sheets (native replacements for the web's window.prompt flows)
+// MARK: - Admin sheets (native replacements for the web's dialogs)
 
 struct MedFormSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -150,24 +172,26 @@ struct MedFormSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Name (e.g. Amlodipine)", text: $name)
-                    TextField("Dose — written exactly as on the label", text: $dose)
-                    Picker("Time of day", selection: $slot) {
+                    TextField("Name", text: $name)
+                    TextField("Dose, as written on the label", text: $dose)
+                    Picker("When it's taken", selection: $slot) {
                         Text("Morning").tag("morning")
                         Text("Noon").tag("noon")
                         Text("Evening").tag("evening")
                         Text("Bedtime").tag("bedtime")
                     }
-                    Toggle("As needed (PRN)", isOn: $prn)
-                    TextField("Purpose (optional)", text: $purpose)
+                    Toggle("As needed", isOn: $prn).tint(FH.brand)
+                    TextField("What it's for (optional)", text: $purpose)
                     TextField("Prescriber (optional)", text: $prescriber)
                 } footer: {
-                    Text("The dose is recorded word-for-word. The app never checks or calculates doses.")
+                    Text("Type the dose exactly as written on the label. The app records it as typed and does not check it.")
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Add medication")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("Add a medication")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -188,11 +212,11 @@ struct MedFormSheet: View {
                              prescriber: prescriber.isEmpty ? nil : prescriber,
                              prn: prn)
             let _: Med = try await APIClient.shared.post("/api/people/\(person.id)/medications", body)
-            banners.confirm("Added \(name)")
+            banners.confirm("Medication added")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't save the medication. Please try again."
         }
     }
 }
@@ -212,20 +236,22 @@ struct DoseChangeSheet: View {
             Form {
                 Section {
                     LabeledContent("Current dose", value: med.dose)
-                    TextField("New dose — written exactly as on the label", text: $newDose)
+                    TextField("New dose", text: $newDose)
                     TextField("Reason (optional)", text: $reason)
                 } footer: {
-                    Text("Recorded word-for-word in the change history. The app never checks doses.")
+                    Text("Type the new dose exactly as written on the label. The app records it as typed and does not check it.")
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Change dose — \(med.name)")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("New dose for \(med.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button("Save dose") { Task { await save() } }
                         .disabled(newDose.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -237,11 +263,11 @@ struct DoseChangeSheet: View {
         do {
             let _: Med = try await APIClient.shared.post("/api/medications/\(med.id)/dose",
                                                          DoseIn(newDose: newDose, reason: reason.isEmpty ? nil : reason))
-            banners.confirm("Dose updated")
+            banners.confirm("Dose change recorded")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't save the dose change. Please try again."
         }
     }
 }
@@ -263,17 +289,19 @@ struct StopMedSheet: View {
                 } header: {
                     Text("Stop \(med.name)?")
                 } footer: {
-                    Text("This is recorded in the change history. The medication stays visible there.")
+                    Text("This marks the medication as stopped in the record. Nothing is deleted; it stays in the change history.")
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
+            .scrollContentBackground(.hidden)
+            .groundBackground()
             .navigationTitle("Stop \(med.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Stop", role: .destructive) { Task { await save() } }
+                    Button("Mark as stopped") { Task { await save() } }
                 }
             }
         }
@@ -284,11 +312,11 @@ struct StopMedSheet: View {
         do {
             let _: Med = try await APIClient.shared.post("/api/medications/\(med.id)/stop",
                                                          StopIn(reason: reason.isEmpty ? nil : reason))
-            banners.confirm("Stopped \(med.name)")
+            banners.confirm("\(med.name) marked as stopped")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't stop the medication. Please try again."
         }
     }
 }
@@ -305,17 +333,23 @@ struct MedNoteSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Note for the record", text: $summary, axis: .vertical)
-                    .lineLimit(3...6)
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                Section {
+                    TextField("Note", text: $summary, axis: .vertical)
+                        .lineLimit(3...6)
+                } footer: {
+                    Text("Recorded exactly as typed, with today's date.")
+                }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Add a note")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("Add a note to the history")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button("Save note") { Task { await save() } }
                         .disabled(summary.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -332,7 +366,7 @@ struct MedNoteSheet: View {
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't save the note. Please try again."
         }
     }
 }

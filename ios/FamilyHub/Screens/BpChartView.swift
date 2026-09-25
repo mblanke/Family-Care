@@ -30,9 +30,9 @@ struct BpChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if points.count < 2 {
-                Text("Not enough readings for a trend yet.")
+                Text("Not enough readings for a trend yet. Save two or more and the lines appear here.")
                     .fhFont(.base)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FH.inkSoft)
             } else {
                 chart
                 legend
@@ -47,14 +47,14 @@ struct BpChartView: View {
                          y: .value("Systolic", point.systolic),
                          series: .value("Series", "Systolic"))
                     .foregroundStyle(FH.ink)
-                    .lineStyle(StrokeStyle(lineWidth: 3))
+                    .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             }
             ForEach(points) { point in
                 LineMark(x: .value("Reading", point.index),
                          y: .value("Diastolic", point.diastolic),
                          series: .value("Series", "Diastolic"))
                     .foregroundStyle(FH.ink)
-                    .lineStyle(StrokeStyle(lineWidth: 3, dash: [8, 6]))
+                    .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [12, 9]))
             }
             if showPulse {
                 ForEach(points.filter { $0.pulse != nil }) { point in
@@ -62,7 +62,7 @@ struct BpChartView: View {
                              y: .value("Pulse", point.pulse!),
                              series: .value("Series", "Pulse"))
                         .foregroundStyle(FH.ink.opacity(0.7))
-                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [2, 5]))
+                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, dash: [1, 7]))
                 }
             }
             if let target {
@@ -99,15 +99,29 @@ struct BpChartView: View {
         .accessibilityLabel("Blood pressure trend chart. Systolic shown as a solid line, diastolic as a dashed line\(showPulse ? ", pulse as a dotted line" : "").")
     }
 
-    /// Plain-language legend, matching the web (line style named in words).
+    /// Plain-language legend, matching the web: a line-style swatch beside the words.
     private var legend: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Systolic (top number) — solid line").fhFont(.small)
-            Text("Diastolic (bottom number) — dashed line").fhFont(.small)
+        VStack(alignment: .leading, spacing: 6) {
+            legendRow(dash: nil, text: "Systolic, the top number")
+            legendRow(dash: [10, 7], text: "Diastolic, the bottom number")
             if showPulse {
-                Text("Pulse — dotted line").fhFont(.small)
+                legendRow(dash: [1, 6], text: "Pulse")
             }
         }
-        .foregroundStyle(.secondary)
+        .fhFont(.base)
+        .foregroundStyle(FH.inkSoft)
+    }
+
+    private func legendRow(dash: [CGFloat]?, text: String) -> some View {
+        HStack(spacing: 10) {
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: 2))
+                path.addLine(to: CGPoint(x: 40, y: 2))
+            }
+            .stroke(FH.ink, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: dash ?? []))
+            .frame(width: 40, height: 4)
+            .accessibilityHidden(true)
+            Text(text)
+        }
     }
 }

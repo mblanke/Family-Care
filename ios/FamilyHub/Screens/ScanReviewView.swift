@@ -27,50 +27,46 @@ struct ScanReviewView: View {
     }
 
     var body: some View {
-        Card {
-            Text("Scan a pharmacy label").fhFont(.base, weight: .bold)
-            Text("The scan only reads the text — you check every field before anything is saved.")
-                .fhFont(.small)
-                .foregroundStyle(.secondary)
+        Card(title: "Scan a pharmacy label", icon: "camera.fill") {
+            Text("Photographs the label and fills in the fields for you to check. Nothing is saved until you press Add.")
+                .fhFont(.base)
+                .foregroundStyle(FH.inkSoft)
 
             HStack(spacing: 10) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button {
+                    BigButton(title: "Scan a label", icon: "camera.fill") {
                         showCamera = true
-                    } label: {
-                        Label("📷 Scan label", systemImage: "camera")
-                            .fhFont(.base, weight: .semibold)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, minHeight: FH.minTouch)
-                            .background(FH.brand, in: RoundedRectangle(cornerRadius: 14))
                     }
-                    .buttonStyle(.plain)
                 }
                 PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label("Choose photo", systemImage: "photo")
-                        .fhFont(.base, weight: .semibold)
-                        .frame(maxWidth: .infinity, minHeight: FH.minTouch)
-                        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 14))
+                    HStack(spacing: 10) {
+                        Image(systemName: "photo").fontWeight(.bold)
+                        Text("Choose a photo")
+                    }
+                    .fhFont(.base, weight: .bold)
+                    .foregroundStyle(FH.ink)
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, minHeight: FH.minTouch)
+                    .chrome()
                 }
+                .buttonStyle(PressableStyle())
             }
 
             if busy {
                 Label("Reading the label…", systemImage: "hourglass")
                     .fhFont(.base)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FH.inkSoft)
             }
             if scanFailed {
-                Text("Couldn't read the label — you can still type it in manually above.")
-                    .fhFont(.base)
-                    .foregroundStyle(FH.danger)
+                InlineError(text: "Couldn't read the label. You can still type it in with Add medication.")
             }
 
             if !candidates.isEmpty {
-                Text("Check each field against the label — the scan can misread.")
-                    .fhFont(.small, weight: .semibold)
-                    .foregroundStyle(FH.danger)
-                Toggle("Keep photo with these entries", isOn: $keepPhoto)
+                Text("Check each line against the label before adding. The scan can misread.")
+                    .fhFont(.base, weight: .bold)
+                Toggle("Keep the photo with this medication", isOn: $keepPhoto)
                     .fhFont(.base)
+                    .tint(FH.brand)
                 ForEach($candidates) { $candidate in
                     candidateRow($candidate)
                 }
@@ -95,27 +91,31 @@ struct ScanReviewView: View {
     }
 
     private func candidateRow(_ candidate: Binding<EditableCandidate>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("Name", text: candidate.name)
-                .textFieldStyle(.roundedBorder)
-            TextField("Dose — exactly as on the label", text: candidate.dose)
-                .textFieldStyle(.roundedBorder)
-            Picker("Time of day", selection: candidate.slot) {
-                Text("Morning").tag("morning")
-                Text("Noon").tag("noon")
-                Text("Evening").tag("evening")
-                Text("Bedtime").tag("bedtime")
+        Well {
+            FieldLabel(title: "Medication name") {
+                TextField("", text: candidate.name).fhField()
             }
-            .pickerStyle(.segmented)
-            TextField("Prescriber (optional)", text: candidate.prescriber)
-                .textFieldStyle(.roundedBorder)
-            BigButton(title: "Add to regimen", icon: "plus") {
+            FieldLabel(title: "Dose, as written on the label") {
+                TextField("", text: candidate.dose).fhField()
+            }
+            FieldLabel(title: "When it's taken") {
+                Picker("When it's taken", selection: candidate.slot) {
+                    Text("Morning").tag("morning")
+                    Text("Noon").tag("noon")
+                    Text("Evening").tag("evening")
+                    Text("Bedtime").tag("bedtime")
+                }
+                .pickerStyle(.segmented)
+                .frame(minHeight: 48)
+            }
+            FieldLabel(title: "Prescriber", optional: true) {
+                TextField("", text: candidate.prescriber).fhField()
+            }
+            BigButton(title: "Add this medication", icon: "plus") {
                 Task { await add(candidate.wrappedValue) }
             }
         }
         .fhFont(.base)
-        .padding(12)
-        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func scan(_ image: UIImage) async {
@@ -148,7 +148,7 @@ struct ScanReviewView: View {
             candidates.removeAll { $0.id == candidate.id }
             await onAdded()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't add the medication. Please try again.")
         }
     }
 }

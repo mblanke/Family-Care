@@ -1,0 +1,95 @@
+name: iOS build check
+
+# Compiles the SwiftUI app for the simulator and runs the unit tests on every
+# pull request that touches ios/. The UI test is excluded because it needs the
+# live Tailscale server. A screenshot of the Login screen is uploaded as an
+# artifact so the fonts and materials can be eyeballed without a Mac.
+
+on:
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios-build.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devs = [d for v in json.load(sys.stdin)["devices"].values() for d in v
+                  if d.get("isAvailable") and d["name"].startswith("iPhone")]
+          devs.sort(key=lambda d: d["name"])
+          print(devs[-1]["udid"])')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | grep "$UDID"
+
+      - name: Build for simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project FamilyHub.xcodeproj -scheme FamilyHub \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build.log | grep -E "error:|warning: .*FamilyHub/|BUILD|Compiling|Linking" || true
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Unit tests
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project FamilyHub.xcodeproj -scheme FamilyHub \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:FamilyHubTests \
+            test 2>&1 | tee test.log | grep -E "error:|Test Case|Executed|TEST" || true
+          grep -q "TEST SUCCEEDED" test.log
+
+      - name: Screenshot the Login screen
+        working-directory: ios
+        run: |
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build/dd/Build/Products -name "FamilyHub.app" -path "*iphonesimulator*" | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.blanke.homeboard
+          sleep 6
+          mkdir -p shots
+          xcrun simctl io "$UDID" screenshot shots/login.png
+
+      - name: Upload build log and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ github.run_number }}
+          path: |
+            ios/build.log
+            ios/test.log
+            ios/shots/
+          if-no-files-found: ignore

@@ -14,6 +14,14 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Format.shortDay("2026-07-16T14:05:00"), "July 16")
     }
 
+    func testLongDateAndDaysUntil() {
+        XCTAssertEqual(Format.longDate("2026-06-01T10:00:00"), "June 1, 2026")
+        XCTAssertEqual(Format.longDate("2026-06-01"), "June 1, 2026")
+        XCTAssertEqual(Format.daysUntil(0), "today")
+        XCTAssertEqual(Format.daysUntil(1), "tomorrow")
+        XCTAssertEqual(Format.daysUntil(3), "in 3 days")
+    }
+
     func testIsoDateRoundTrip() {
         var comps = DateComponents()
         comps.year = 2026; comps.month = 7; comps.day = 4; comps.hour = 9; comps.minute = 30
