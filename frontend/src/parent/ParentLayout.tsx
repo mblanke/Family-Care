@@ -1,24 +1,28 @@
-// parent/ParentLayout.tsx — today-first, huge tabs, no month/accounts
+// parent/ParentLayout.tsx — today-first, six big pills, no month/accounts
 import { useState } from "react";
+import { NavPills, type NavTab } from "../components/NavPills";
 import { Today } from "../screens/Today";
 import { TodoScreen } from "../screens/TodoScreen";
 import { GroceryScreen } from "../screens/GroceryScreen";
 import { Medications } from "../screens/Medications";
 import { BpLog } from "../screens/BpLog";
 import { Contacts } from "../screens/Contacts";
+
 type Tab = "today" | "todo" | "grocery" | "meds" | "bp" | "contacts";
+const TABS: NavTab<Tab>[] = [
+  { id: "today", label: "Today", icon: "sun" },
+  { id: "todo", label: "To-do", icon: "list" },
+  { id: "grocery", label: "Grocery", icon: "cart" },
+  { id: "meds", label: "Medications", icon: "pill" },
+  { id: "bp", label: "Blood pressure", icon: "heart" },
+  { id: "contacts", label: "Contacts", icon: "person" },
+];
+
 export function ParentLayout() {
   const [tab, setTab] = useState<Tab>("today");
-  const T = ({ id, label }: { id: Tab; label: string }) => (
-    <button onClick={() => setTab(id)}
-      className={`flex-1 min-h-touch text-big font-bold rounded-2xl ${tab === id ? "bg-brand text-paper" : "border-4"}`}>
-      {label}</button>
-  );
   return (
-    <div className="flex flex-col gap-4">
-      <nav className="flex gap-touch p-4 flex-wrap">
-        <T id="today" label="Today" /><T id="todo" label="To-do" /><T id="grocery" label="Grocery" /><T id="meds" label="Medications" /><T id="bp" label="BP" /><T id="contacts" label="Contacts" />
-      </nav>
+    <div className="flex flex-col gap-6">
+      <NavPills tabs={TABS} value={tab} onChange={setTab} columns="grid-cols-3 md:grid-cols-6" />
       {tab === "today" && <Today />}
       {tab === "todo" && <TodoScreen />}
       {tab === "grocery" && <GroceryScreen />}

@@ -44,3 +44,10 @@ def test_export_renders_html_with_reading(env):
     r = env.get(f"/api/people/{env.pid}/bp/export?days=90")
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert "130/80" in r.text and "Mom" in r.text
+
+
+def test_export_labels_all_readings_when_days_is_zero(env):
+    env.post("/api/auth/login", json={"username": "admin", "password": "pw"})
+    r = env.get(f"/api/people/{env.pid}/bp/export?days=0")
+    assert r.status_code == 200
+    assert "All readings" in r.text and "Last all days" not in r.text

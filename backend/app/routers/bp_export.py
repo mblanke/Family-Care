@@ -31,7 +31,7 @@ def export(pid: int, days: int = 90, db: Session = Depends(get_db), _=Depends(cu
 table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #999;padding:6px;text-align:left}}</style>
 </head><body>
 <h1>Blood pressure summary — {person.name}</h1>
-<p>Last {days or 'all'} days · {len(rows)} readings · generated for sharing with a clinician.</p>
+<p>{'All readings' if days == 0 else f'Last {days} days'} · {len(rows)} readings · generated for sharing with a clinician.</p>
 {tgt}
 <table><thead><tr><th>When</th><th>BP</th><th>Pulse</th><th>Note</th></tr></thead><tbody>{trs}</tbody></table>
 <p style="margin-top:16px;font-style:italic">A personal record — not medical advice.</p>

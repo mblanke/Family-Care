@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { Button } from "../components/Button";
+import { Card, Well } from "../components/Card";
 import { Confirmation } from "../components/Confirmation";
+import { Icon } from "../components/icons";
 
 interface Cand {
   name: string;
@@ -16,6 +18,9 @@ const SLOTS: [string, string][] = [
   ["evening", "Evening"],
   ["bedtime", "Bedtime"],
 ];
+
+// Server messages that carry no information for the reader
+const GENERIC = /^(scan failed|internal server error|bad gateway|service unavailable|failed to fetch|)$/i;
 
 export function ScanReview({
   personId,
@@ -82,84 +87,67 @@ export function ScanReview({
     }
   }
 
+  const fieldCls = "field rounded-[18px] px-4 text-big";
+
   return (
-    <div className="border-4 rounded-2xl p-4 flex flex-col gap-3">
+    <Card title="Scan a pharmacy label" icon="camera">
       {ack && <Confirmation message={ack} onDone={() => setAck(null)} />}
-      <label
-        className="min-h-touch px-6 rounded-2xl bg-brand text-paper text-big font-bold
-                   inline-flex items-center gap-3 cursor-pointer w-fit"
-      >
-        📷 Scan label
-        <input
-          aria-label="Scan label"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={onFile}
-        />
-      </label>
-      {busy && <p className="text-big">Reading the label…</p>}
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="btn-primary pressable min-h-touch px-7 rounded-pill text-big font-bold inline-flex items-center gap-3 cursor-pointer w-fit">
+          <Icon name="camera" />
+          Scan a label
+          <input
+            aria-label="Scan label"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only-label"
+            onChange={onFile}
+          />
+        </label>
+        <span className="text-base text-ink-soft">Photographs the label and fills in the fields for you to check.</span>
+      </div>
+      {busy && <p className="m-0 text-big">Reading the label…</p>}
       {err && (
-        <p className="text-big text-red-700" role="alert">
-          {err} — you can still type it in manually.
+        <p className="m-0 text-big font-bold text-danger flex items-start gap-3" role="alert">
+          <Icon name="alert" size={30} className="shrink-0 mt-1" />
+          <span>
+            Couldn't read the label. You can still type it in below.
+            {!GENERIC.test(err.trim()) && <span className="block text-base font-normal text-ink-soft">{err}</span>}
+          </span>
         </p>
       )}
       {rows.length > 0 && (
-        <p className="text-base italic">
-          Check each line against the label before adding — the scan can
+        <p className="m-0 text-base text-ink-soft">
+          Check each line against the label before adding. The scan can
           misread; nothing is saved until you press Add.
         </p>
       )}
       {rows.map((r, i) => (
-        <div key={i} className="border-2 rounded-xl p-3 flex flex-col gap-2">
-          <input
-            aria-label="Medication name"
-            className="text-big p-2 border-4 rounded-xl"
-            value={r.name}
-            onChange={(e) => edit(i, { name: e.target.value })}
-          />
-          <input
-            aria-label="Dose"
-            className="text-big p-2 border-4 rounded-xl"
-            value={r.dose}
-            onChange={(e) => edit(i, { dose: e.target.value })}
-          />
-          <select
-            aria-label="Slot"
-            className="text-big p-2 border-4 rounded-xl"
-            value={r.slot}
-            onChange={(e) => edit(i, { slot: e.target.value })}
-          >
-            {SLOTS.map(([k, l]) => (
-              <option key={k} value={k}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <input
-            aria-label="Prescriber"
-            className="text-big p-2 border-4 rounded-xl"
-            placeholder="Prescriber"
-            value={r.prescriber ?? ""}
-            onChange={(e) => edit(i, { prescriber: e.target.value })}
-          />
-          <Button onClick={() => addRow(i)} icon={<span aria-hidden>＋</span>}>
-            Add to regimen
-          </Button>
-        </div>
+        <Well key={i} className="flex-col !items-stretch gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-base font-bold">Medication name
+              <input aria-label="Medication name" className={fieldCls} value={r.name} onChange={(e) => edit(i, { name: e.target.value })} /></label>
+            <label className="flex flex-col gap-1 text-base font-bold">Dose
+              <input aria-label="Dose" className={fieldCls} value={r.dose} onChange={(e) => edit(i, { dose: e.target.value })} /></label>
+            <label className="flex flex-col gap-1 text-base font-bold">When it's taken
+              <select aria-label="Slot" className={fieldCls} value={r.slot} onChange={(e) => edit(i, { slot: e.target.value })}>
+                {SLOTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select></label>
+            <label className="flex flex-col gap-1 text-base font-bold">Prescriber
+              <input aria-label="Prescriber" className={fieldCls} value={r.prescriber ?? ""} onChange={(e) => edit(i, { prescriber: e.target.value })} /></label>
+          </div>
+          <div>
+            <Button onClick={() => addRow(i)} icon={<Icon name="plus" strokeWidth={2.8} />}>Add this medication</Button>
+          </div>
+        </Well>
       ))}
       {rows.length > 0 && (
-        <label className="text-base flex items-center gap-3">
-          <input
-            type="checkbox"
-            className="w-7 h-7"
-            checked={keepPhoto}
-            onChange={(e) => setKeepPhoto(e.target.checked)}
-          />
-          Keep photo with these entries
+        <label className="text-base font-bold flex items-center gap-3 min-h-touch">
+          <input type="checkbox" className="w-8 h-8 accent-brand" checked={keepPhoto} onChange={(e) => setKeepPhoto(e.target.checked)} />
+          Keep the photo with this medication
         </label>
       )}
-    </div>
+    </Card>
   );
 }

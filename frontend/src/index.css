@@ -3,7 +3,82 @@
 @tailwind utilities;
 
 :root { font-size: 16px; }
-/* Large-mode: one-tap toggle adds .text-large to <html>, bumping the rem scale */
+/* Larger-text mode: one-tap toggle adds .text-large to <html>, bumping the rem scale */
 html.text-large { font-size: 22.5px; }
-body { @apply bg-paper text-ink text-base; margin: 0; }
+
+body {
+  @apply bg-ground text-ink text-base font-sans;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+button, select, input[type="checkbox"] { cursor: pointer; }
 button { min-width: theme('minWidth.touch'); min-height: theme('minHeight.touch'); }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+@layer components {
+  /* Platinum ground: two soft highlights over a diagonal sheen */
+  .ground {
+    background:
+      radial-gradient(1100px 600px at 15% -10%, rgba(255,255,255,.95), rgba(255,255,255,0) 60%),
+      radial-gradient(900px 600px at 110% 105%, rgba(14,116,144,.16), rgba(14,116,144,0) 60%),
+      linear-gradient(160deg, #f5f7fa 0%, #e2e6ec 42%, #f1f3f6 68%, #d9dfe6 100%);
+  }
+  /* Glass card: replaces the old 4px black outline */
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.80));
+    border: 1px solid rgba(15,23,32,.16);
+    box-shadow: theme('boxShadow.lift');
+  }
+  /* Inset well inside a glass card (list rows, appointment rows) */
+  .well {
+    background: rgba(255,255,255,.7);
+    border: 1px solid rgba(15,23,32,.12);
+  }
+  /* Chrome: secondary buttons, segmented trays, chips, check squares */
+  .chrome {
+    background: linear-gradient(135deg, #ffffff 0%, #d7dde5 44%, #f2f4f7 58%, #c6ced8 100%);
+    border: 1px solid rgba(15,23,32,.24);
+    box-shadow: theme('boxShadow.chrome');
+    color: theme('colors.ink');
+  }
+  /* Metal fills for actions. White text stays >= 4.5:1 on every band. */
+  .btn-primary {
+    background: linear-gradient(180deg, theme('colors.brand.light') 0%, theme('colors.brand.DEFAULT') 30%, theme('colors.brand.dark') 100%);
+    color: theme('colors.paper');
+    border: 1px solid theme('colors.brand.edge');
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.42), 0 8px 20px rgba(10,85,112,.30);
+  }
+  .btn-confirm {
+    background: linear-gradient(180deg, theme('colors.confirm.light') 0%, theme('colors.confirm.DEFAULT') 30%, theme('colors.confirm.dark') 100%);
+    color: theme('colors.paper');
+    border: 1px solid theme('colors.confirm.edge');
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.40), 0 8px 20px rgba(26,127,55,.28);
+  }
+  .btn-danger {
+    background: linear-gradient(180deg, theme('colors.danger.light') 0%, theme('colors.danger.DEFAULT') 30%, theme('colors.danger.dark') 100%);
+    color: theme('colors.paper');
+    border: 1px solid theme('colors.danger.edge');
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 20px rgba(179,38,30,.28);
+  }
+  /* Text inputs and selects */
+  .field {
+    background: linear-gradient(180deg, #ffffff, #f4f6f8);
+    border: 2px solid rgba(15,23,32,.35);
+    box-shadow: inset 0 2px 4px rgba(15,23,32,.08);
+    color: theme('colors.ink');
+    min-height: theme('minHeight.touch');
+  }
+  .field::placeholder { color: #5b6773; }
+  .field:focus-visible { outline: 4px solid theme('colors.brand.DEFAULT'); outline-offset: 2px; }
+  /* Modal surface */
+  .dialog {
+    background: linear-gradient(180deg, #ffffff, #f3f5f8);
+    border: 1px solid rgba(15,23,32,.2);
+    box-shadow: theme('boxShadow.dialog');
+  }
+  .pressable { @apply transition-transform active:scale-95; }
+  .sr-only-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+/* Visible focus for every control, in brand teal */
+:focus-visible { outline: 4px solid #0e7490; outline-offset: 2px; }

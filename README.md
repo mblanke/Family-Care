@@ -51,11 +51,11 @@ add and edit (admin add/edit works on iPhone width too).
 
 | Screen | Who sees it | Notes |
 |---|---|---|
-| **Today** | everyone | Appointments today, open to-dos, upcoming birthdays (within 14 days) |
+| **Today** | everyone | Appointments today (with ride badge and person chip), open to-dos, upcoming birthdays (within 14 days) |
 | **Schedule** | admin + family | Week view with ride-flag badge; admin also gets month view |
 | **Driver roll-up** | admin + family | "What am I driving this week" — appointments needing a ride |
 | **To-do** | everyone | Parents add/check/delete; big visual confirmation banner (~6s) |
-| **Grocery** | everyone | Costco / Grocery / All toggle; qty stepper; clear-checked |
+| **Grocery** | everyone | Costco / Grocery store / All toggle; qty stepper; "Remove checked items" |
 | **Birthdays** | admin + family | Add/edit upcoming birthdays; surfaced on Today |
 | **Accounts** | admin only | Create family + parent accounts; not visible to family/parent |
 
@@ -78,6 +78,16 @@ add and edit (admin add/edit works on iPhone width too).
 - **Admin login** — Schedule shows driver roll-up; month view visible; can create family/parent accounts.
 - **Font toggle** — enlarges text and persists after reload (stored per user).
 - **PWA** — Add to iPad home screen (Safari Share → Add to Home Screen) → opens standalone full-screen.
+
+## Look and feel
+
+The frontend uses a "liquid metal" material system built for older readers: a platinum ground, glass cards,
+chrome secondary controls and deep-teal metal primary buttons. Tokens live in `frontend/tailwind.config.ts`;
+the materials (`.ground`, `.glass`, `.chrome`, `.btn-primary`, `.btn-confirm`, `.btn-danger`, `.field`,
+`.dialog`) are in `frontend/src/index.css`. Headings use Sora and body text uses Atkinson Hyperlegible, both
+self-hosted via `@fontsource` so nothing depends on Google Fonts over Tailscale. Icons are an inline SVG set
+in `frontend/src/components/icons.tsx` (no emoji). Every tap target is at least 64 px; nothing is smaller than
+20 px text in normal mode, and the "Larger text" toggle scales the whole page by 40 percent.
 
 ## v1.1 — care tracking
 
@@ -117,7 +127,7 @@ docker compose exec api alembic revision --autogenerate -m "msg"
 
 ## Medication-label scan (optional, admin-only)
 
-On the admin Medications screen, "📷 Scan label" photographs a pharmacy label and pre-fills the
+On the admin Medications screen, "Scan a label" photographs a pharmacy label and pre-fills the
 medication form via your `llm-router` hosted vision model (set `LLM_ROUTER_URL`, `LLM_ROUTER_TOKEN`,
 `LLM_ROUTER_VISION_MODEL` in `.env`). The scan only transcribes text — it never saves, computes, or
 interprets anything; you review and confirm every field, and the normal add path does the write.
@@ -129,7 +139,7 @@ Manual entry always works, with or without the router configured.
 
 ### Backup: medication photos
 
-If "Keep photo with this entry" is used, images live in the `medphotos` Docker volume
+If "Keep the photo with this medication" is used, images live in the `medphotos` Docker volume
 (`/data/med-photos`). Back it up alongside the database:
 ```bash
 docker run --rm -v family-hub_medphotos:/v -v "$PWD":/out alpine tar czf /out/medphotos-$(date +%F).tgz -C /v .

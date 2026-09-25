@@ -2,25 +2,25 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Todo } from "../api/types";
 import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { CheckSquare } from "../components/CheckSquare";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Confirmation } from "../components/Confirmation";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { ScreenTitle } from "../components/ScreenTitle";
+import { Icon } from "../components/icons";
 
 // Hoisted to module scope — not inside render — to avoid remount/focus churn
 function Row({ t, onToggle, onDelete }:
   { t: Todo; onToggle: (t: Todo) => void; onDelete: (t: Todo) => void }) {
   return (
-    <li className="flex items-center gap-4 border-4 rounded-2xl p-4">
-      <button
-        onClick={() => onToggle(t)}
-        aria-label={t.done ? "Uncheck" : "Check"}
-        className={`w-14 h-14 rounded-xl border-4 flex items-center justify-center text-huge
-                    ${t.done ? "bg-confirm text-paper" : ""} transition-transform active:scale-90`}
-      >
-        {t.done ? "✓" : ""}
+    <li className="flex items-center gap-4 px-1 py-1">
+      <CheckSquare done={t.done} itemName={t.text} onToggle={() => onToggle(t)} />
+      <span className={`flex-1 text-big ${t.done ? "line-through text-ink-soft" : ""}`}>{t.text}</span>
+      <button type="button" onClick={() => onDelete(t)} aria-label={`Delete ${t.text}`}
+              className="chrome pressable rounded-[18px] w-16 h-16 inline-flex items-center justify-center shrink-0">
+        <Icon name="trash" size={26} />
       </button>
-      <span className={`flex-1 text-big ${t.done ? "line-through" : ""}`}>{t.text}</span>
-      <button onClick={() => onDelete(t)} aria-label="Delete" className="min-h-touch px-4 text-big">🗑</button>
     </li>
   );
 }
@@ -35,7 +35,7 @@ export function TodoScreen() {
   function load() {
     api.get<Todo[]>("/api/todos")
       .then(setItems)
-      .catch((err) => console.error("Failed to load todos:", err));
+      .catch(() => setError("Couldn't load the list. Please try again."));
   }
   useEffect(() => { load(); }, []);
 
@@ -47,17 +47,17 @@ export function TodoScreen() {
       setAck("Added to the list");
       load();
     } catch {
-      setError("Couldn't add item — please try again.");
+      setError("Couldn't add the item. Please try again.");
     }
   }
 
   async function toggle(t: Todo) {
     try {
       await api.post(`/api/todos/${t.id}/done`, { done: !t.done });
-      if (!t.done) setAck("Checked off ✓");
+      if (!t.done) setAck("Checked off");
       load();
     } catch {
-      setError("Couldn't save — please try again.");
+      setError("Couldn't save. Please try again.");
     }
   }
 
@@ -65,9 +65,10 @@ export function TodoScreen() {
     setToDelete(null);
     try {
       await api.delete(`/api/todos/${t.id}`);
+      setAck("Removed");
       load();
     } catch {
-      setError("Couldn't delete item — please try again.");
+      setError("Couldn't remove the item. Please try again.");
     }
   }
 
@@ -75,32 +76,48 @@ export function TodoScreen() {
   const done = items.filter(i => i.done);
 
   return (
-    <div className="p-6 flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {ack && <Confirmation message={ack} onDone={() => setAck(null)} />}
       {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
-      <div className="flex gap-touch">
+      <ScreenTitle>To-do</ScreenTitle>
+
+      <Card as="div" className="!flex-row items-center flex-wrap">
+        <label htmlFor="new-todo" className="sr-only-label">New to-do item</label>
         <input
-          className="flex-1 text-big p-4 border-4 rounded-xl"
+          id="new-todo"
+          className="field rounded-[20px] px-5 text-big flex-1 min-w-[14rem]"
           placeholder="Add an item"
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === "Enter" && add()}
-          aria-label="New to-do item"
         />
-        <Button onClick={add} icon={<span aria-hidden>＋</span>}>Add</Button>
-      </div>
-      <ul className="flex flex-col gap-3">
-        {open.map(t => <Row key={t.id} t={t} onToggle={toggle} onDelete={setToDelete} />)}
-      </ul>
-      <h3 className="text-big font-bold mt-4">Done</h3>
-      <ul className="flex flex-col gap-3 opacity-70">
-        {done.map(t => <Row key={t.id} t={t} onToggle={toggle} onDelete={setToDelete} />)}
-      </ul>
+        <Button onClick={add} icon={<Icon name="plus" strokeWidth={2.8} />}>Add</Button>
+      </Card>
+
+      <Card>
+        {open.length === 0 ? (
+          <p className="m-0 text-big text-ink-soft">Nothing on the list. Add something above.</p>
+        ) : (
+          <ul className="m-0 p-0 list-none flex flex-col gap-2">
+            {open.map(t => <Row key={t.id} t={t} onToggle={toggle} onDelete={setToDelete} />)}
+          </ul>
+        )}
+      </Card>
+
+      {done.length > 0 && (
+        <Card title="Done" icon="check">
+          <ul className="m-0 p-0 list-none flex flex-col gap-2 opacity-80">
+            {done.map(t => <Row key={t.id} t={t} onToggle={toggle} onDelete={setToDelete} />)}
+          </ul>
+        </Card>
+      )}
+
       <ConfirmDialog
         open={!!toDelete}
         title="Remove this item?"
         body={toDelete?.text}
         confirmLabel="Remove"
+        cancelLabel="Keep"
         onConfirm={() => toDelete && remove(toDelete)}
         onCancel={() => setToDelete(null)}
       />
