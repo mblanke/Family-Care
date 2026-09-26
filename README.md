@@ -18,6 +18,25 @@ App: `http://<atlas-tailscale-ip>:8080` · MCP: `http://<atlas-tailscale-ip>:876
 The admin is bootstrapped from `ADMIN_USERNAME`/`ADMIN_PASSWORD` in `.env`. Create family and
 parent accounts from the admin UI (added in v1 core). Roles: `admin` / `family` / `parent`.
 
+## Deploy (automatic, from GitHub)
+
+Code flows **here → GitHub → atlas**. Every push to `main` that touches the web app, API or MCP
+runs `.github/workflows/deploy-atlas.yml`: the runner joins the tailnet, copies the repo to
+`/opt/stacks/family-hub/` with rsync (never touching `.env` or backups; no files are deleted),
+runs `docker compose up -d --build`, and waits for `/healthz`. Database migrations apply on API
+start. It can also be run by hand from the Actions tab.
+
+One-time setup (repo → Settings → Secrets and variables → Actions):
+
+| Secret | What to put in it |
+|---|---|
+| `TS_AUTHKEY` | Tailscale admin → Settings → Keys → an **ephemeral, reusable** auth key |
+| `ATLAS_SSH_KEY` | A private key made for deploys; its `.pub` goes in atlas `~/.ssh/authorized_keys` |
+| `ATLAS_USER` | The atlas user that owns that key and is in the `docker` group |
+| `ATLAS_HOST` | Optional. Defaults to the MagicDNS name `atlas` |
+
+Until the secrets exist, the workflow skips with a notice instead of failing.
+
 ## Data & backup
 
 All data is in the Postgres `pgdata` named volume. Back up with:

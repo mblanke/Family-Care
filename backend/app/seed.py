@@ -8,7 +8,7 @@ from app.models.contact import Contact
 from app.models.user import User
 from app.services import auth, people, appointments, todos, grocery, birthdays, contacts as contacts_svc
 
-_PEOPLE = [("Dad", "dad", "#1f6feb", 0), ("Mom", "mom", "#a371f7", 1)]
+_PEOPLE = [("Dad", "dad", "#1f6feb", 0), ("Mom", "mom", "#8a5cf0", 1)]
 
 def seed(db: Session) -> None:
     s = get_settings()
