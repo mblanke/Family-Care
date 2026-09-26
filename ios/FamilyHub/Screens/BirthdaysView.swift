@@ -13,39 +13,41 @@ struct BirthdaysView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ForEach(birthdays) { birthday in
-                    Card {
-                        HStack {
-                            Text("🎂 \(birthday.name) — \(Self.months[max(0, min(11, birthday.month - 1))]) \(birthday.day)"
-                                 + (birthday.year.map { " \($0)" } ?? ""))
-                                .fhFont(.base)
-                            Spacer(minLength: 0)
-                            if session.canEditSchedule {
-                                Button {
-                                    pendingDelete = birthday
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .fhFont(.base)
-                                        .foregroundStyle(FH.danger)
-                                        .frame(width: FH.minTouch, height: FH.minTouch)
+                ScreenHeading(text: "Birthdays")
+
+                Card {
+                    if birthdays.isEmpty {
+                        Text("No birthdays yet.").fhFont(.big).foregroundStyle(FH.inkSoft)
+                    }
+                    ForEach(birthdays) { birthday in
+                        Well {
+                            HStack(spacing: 14) {
+                                Image(systemName: "birthday.cake.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundStyle(FH.brand)
+                                    .accessibilityHidden(true)
+                                Text(birthday.name).fhFont(.big, weight: .bold)
+                                Spacer(minLength: 0)
+                                Text("\(Self.months[max(0, min(11, birthday.month - 1))]) \(birthday.day)"
+                                     + (birthday.year.map { ", \($0)" } ?? ""))
+                                    .fhFont(.big)
+                                if session.canEditSchedule {
+                                    IconButton(systemName: "trash", label: "Delete \(birthday.name)") {
+                                        pendingDelete = birthday
+                                    }
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Remove \(birthday.name)'s birthday")
                             }
                         }
                     }
                 }
-                if birthdays.isEmpty {
-                    Card { Text("No birthdays recorded yet.").fhFont(.base) }
-                }
 
                 if session.canEditSchedule {
-                    BigButton(title: "Add birthday", icon: "plus") { showAdd = true }
+                    BigButton(title: "Add a birthday", icon: "plus", fullWidth: false) { showAdd = true }
                 }
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
         .sheet(isPresented: $showAdd) {
@@ -71,9 +73,10 @@ struct BirthdaysView: View {
     private func remove(_ birthday: Birthday) async {
         do {
             let _: OkOut = try await APIClient.shared.delete("/api/birthdays/\(birthday.id)")
+            banners.confirm("Birthday removed")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't remove the birthday. Please try again.")
         }
     }
 }
@@ -103,12 +106,14 @@ struct BirthdayFormSheet: View {
                         Text("\(d)").tag(d)
                     }
                 }
-                TextField("Birth year (optional — shows \"turning N\")", text: $yearText)
+                TextField("Birth year (optional, shows \"turning N\")", text: $yearText)
                     .keyboardType(.numberPad)
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Add birthday")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("Add a birthday")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -130,11 +135,11 @@ struct BirthdayFormSheet: View {
         do {
             let body = BirthdayIn(name: name, month: month, day: day, year: Int(yearText))
             let _: Birthday = try await APIClient.shared.post("/api/birthdays", body)
-            banners.confirm("Added \(name)'s birthday")
+            banners.confirm("Birthday added")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't add the birthday. Please try again."
         }
     }
 }

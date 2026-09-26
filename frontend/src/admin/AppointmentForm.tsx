@@ -4,7 +4,9 @@ import { api } from "../api/client";
 import type { PersonApi } from "../api/types";
 import { PersonBadge } from "../components/PersonBadge";
 import { Button } from "../components/Button";
+import { Card } from "../components/Card";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Icon } from "../components/icons";
 
 interface Props {
   people: PersonApi[];
@@ -27,10 +29,12 @@ interface FormState {
 }
 
 // Hoisted helpers — NOT inside AppointmentForm render body
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ label, icon, checked, onChange }:
+  { label: string; icon: "car" | "repeat"; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center gap-4 min-h-touch cursor-pointer">
-      <input type="checkbox" className="w-8 h-8" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <input type="checkbox" className="w-9 h-9 accent-brand" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <Icon name={icon} size={28} />
       <span className="text-big">{label}</span>
     </label>
   );
@@ -75,13 +79,18 @@ export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: 
   const [f, setF] = useState<FormState>({ ...EMPTY, ...initial });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]): void {
     setF(prev => ({ ...prev, [k]: v }));
   }
 
   async function save(): Promise<void> {
-    if (!f.title.trim() || !f.date || !f.startTime) return;
+    if (!f.title.trim() || !f.date || !f.startTime) {
+      setFormError("Enter a title, a date and a start time.");
+      return;
+    }
+    setFormError(null);
     setSaving(true);
     try {
       const body = buildBody(f);
@@ -92,66 +101,74 @@ export function AppointmentForm({ people, apptId, initial, onSaved, onCancel }: 
       }
       onSaved();
     } catch {
-      setError("Couldn't save appointment — please try again.");
+      setError("Couldn't save the appointment. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
+  const fieldCls = "field rounded-[20px] px-5 text-big";
+
   return (
-    <div className="flex flex-col gap-4 border-4 rounded-2xl p-6">
+    <Card title={apptId ? "Edit appointment" : "New appointment"} icon="calendar">
       {error && <ErrorBanner message={error} onDone={() => setError(null)} />}
-      <h3 className="text-big font-bold">{apptId ? "Edit Appointment" : "New Appointment"}</h3>
+      {formError && (
+        <p role="alert" className="m-0 text-big font-bold text-danger flex items-center gap-3">
+          <Icon name="alert" size={30} />{formError}
+        </p>
+      )}
 
-      <input className="text-big p-4 border-4 rounded-xl" placeholder="Title"
-        value={f.title} onChange={e => set("title", e.target.value)} aria-label="Title" />
+      <label className="flex flex-col gap-1 text-base font-bold">Title
+        <input className={fieldCls} value={f.title} onChange={e => set("title", e.target.value)} aria-label="Title" /></label>
 
-      <input type="date" className="text-big p-4 border-4 rounded-xl"
-        value={f.date} onChange={e => set("date", e.target.value)} aria-label="Date" />
-
-      <div className="flex gap-3">
-        <input type="time" className="text-big p-4 border-4 rounded-xl flex-1"
-          value={f.startTime} onChange={e => set("startTime", e.target.value)} aria-label="Start time" />
-        <input type="time" className="text-big p-4 border-4 rounded-xl flex-1"
-          value={f.endTime} onChange={e => set("endTime", e.target.value)} aria-label="End time" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 text-base font-bold">Date
+          <input type="date" className={fieldCls} value={f.date} onChange={e => set("date", e.target.value)} aria-label="Date" /></label>
+        <label className="flex flex-col gap-1 text-base font-bold">Starts
+          <input type="time" className={fieldCls} value={f.startTime} onChange={e => set("startTime", e.target.value)} aria-label="Start time" /></label>
+        <label className="flex flex-col gap-1 text-base font-bold"><span>Ends <span className="font-normal text-ink-soft">(optional)</span></span>
+          <input type="time" className={fieldCls} value={f.endTime} onChange={e => set("endTime", e.target.value)} aria-label="End time" /></label>
       </div>
 
-      <input className="text-big p-4 border-4 rounded-xl" placeholder="Location (optional)"
-        value={f.location} onChange={e => set("location", e.target.value)} aria-label="Location" />
+      <label className="flex flex-col gap-1 text-base font-bold"><span>Location <span className="font-normal text-ink-soft">(optional)</span></span>
+        <input className={fieldCls} value={f.location} onChange={e => set("location", e.target.value)} aria-label="Location" /></label>
 
       {/* Person chips — PersonBadge uses person colors (correct usage) */}
-      <div className="flex gap-3 flex-wrap">
-        <button
-          onClick={() => set("personMode", "both")}
-          className={`min-h-touch px-5 text-base font-bold rounded-2xl border-4
-            ${f.personMode === "both" ? "bg-brand text-paper border-brand" : ""}`}
-          aria-pressed={f.personMode === "both"}
-        >
-          Both
-        </button>
-        {people.map(p => (
+      <div className="flex flex-col gap-2">
+        <span className="text-base font-bold">Who it's for</span>
+        <div className="flex gap-3 flex-wrap">
           <button
-            key={p.id}
-            onClick={() => set("personMode", p.id)}
-            aria-pressed={f.personMode === p.id}
-            className={`min-h-touch rounded-2xl border-4
-              ${f.personMode === p.id ? "opacity-100 ring-4 ring-brand" : "opacity-60"}`}
+            type="button"
+            onClick={() => set("personMode", "both")}
+            className={`min-h-touch px-6 text-base font-bold rounded-pill pressable ${f.personMode === "both" ? "btn-primary" : "chrome"}`}
+            aria-pressed={f.personMode === "both"}
           >
-            <PersonBadge person={p} />
+            Everyone
           </button>
-        ))}
+          {people.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => set("personMode", p.id)}
+              aria-pressed={f.personMode === p.id}
+              className={`min-h-touch px-3 rounded-pill pressable inline-flex items-center
+                ${f.personMode === p.id ? "chrome ring-4 ring-brand" : "chrome opacity-70"}`}
+            >
+              <PersonBadge person={p} />
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Toggle label="🚗 Needs a ride" checked={f.needsRide} onChange={v => set("needsRide", v)} />
-      <Toggle label="🔁 Repeat monthly" checked={f.monthly} onChange={v => set("monthly", v)} />
+      <Toggle label="Needs a ride" icon="car" checked={f.needsRide} onChange={v => set("needsRide", v)} />
+      <Toggle label="Repeats monthly" icon="repeat" checked={f.monthly} onChange={v => set("monthly", v)} />
 
-      <div className="flex gap-4">
-        <Button onClick={save} disabled={saving}>
-          {saving ? "Saving…" : apptId ? "Update" : "Save"}
+      <div className="flex gap-touch flex-wrap">
+        <Button onClick={save} disabled={saving} icon={<Icon name="check" strokeWidth={3} />}>
+          {saving ? "Saving…" : apptId ? "Update appointment" : "Save appointment"}
         </Button>
-        <button onClick={onCancel}
-          className="min-h-touch px-5 text-big border-4 rounded-2xl">Cancel</button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
-    </div>
+    </Card>
   );
 }

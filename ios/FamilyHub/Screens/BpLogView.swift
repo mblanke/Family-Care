@@ -8,30 +8,36 @@ struct BpLogView: View {
     @State private var days = "30"       // 30 | 90 | 0 (all)
     @State private var showPulse = false
     @State private var systolic = 120
-    @State private var diastolic = 70
+    @State private var diastolic = 80
     @State private var pulse = 70
     @State private var showTargetForm = false
     @State private var pdfURL: URL?
 
+    private var trendTitle: String {
+        days == "0" ? "Trend, all readings" : "Trend, last \(days) days"
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("A record to share with a doctor — the app never judges what is normal.")
-                    .fhFont(.small, weight: .semibold)
-                    .foregroundStyle(.secondary)
+                ScreenHeading(text: "Blood pressure")
 
                 PersonPicker(people: people.people, selected: $people.selected)
 
                 entryCard
 
-                SegControl(options: [("30", "30 days"), ("90", "90 days"), ("0", "All")], selection: $days)
-                Toggle(isOn: $showPulse) {
-                    Text("Show pulse").fhFont(.base)
+                HStack(spacing: 12) {
+                    SegControl(options: [("30", "30 days"), ("90", "90 days"), ("0", "All")], selection: $days)
+                        .accessibilityLabel("Time range")
+                    Toggle(isOn: $showPulse) {
+                        Text("Show pulse").fhFont(.base, weight: .bold)
+                    }
+                    .tint(FH.brand)
+                    .fixedSize()
                 }
-                .frame(minHeight: FH.minTouch - 16)
 
                 if let view {
-                    Card {
+                    Card(title: trendTitle) {
                         BpChartView(readings: view.readings.reversed(), target: view.target, showPulse: showPulse)
                     }
 
@@ -39,24 +45,32 @@ struct BpLogView: View {
 
                     if session.isAdmin {
                         BigButton(title: view.target == nil ? "Set doctor's target" : "Update doctor's target",
-                                  icon: "target", background: Color(.systemGray)) {
+                                  icon: "target", variant: .secondary) {
                             showTargetForm = true
                         }
                     }
 
-                    ForEach(view.readings) { reading in
-                        readingCard(reading)
-                    }
-                    if view.readings.isEmpty {
-                        Card { Text("No readings in this period.").fhFont(.base) }
+                    Card(title: "Recent readings") {
+                        if view.readings.isEmpty {
+                            Text("No readings in this range.").fhFont(.base).foregroundStyle(FH.inkSoft)
+                        }
+                        ForEach(view.readings) { reading in
+                            readingRow(reading)
+                        }
                     }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
+
+                Text("A personal record to share with your doctor or pharmacist. Not medical advice.")
+                    .fhFont(.small)
+                    .foregroundStyle(FH.inkSoft)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await people.load(); await load() }
         .onChange(of: people.selected?.id) { Task { await load() } }
         .task(id: days) { await load() }
@@ -67,57 +81,70 @@ struct BpLogView: View {
     }
 
     private var entryCard: some View {
-        Card {
-            Text("New reading").fhFont(.base, weight: .bold)
-            // Stacked rows — three side-by-side steppers don't fit an iPhone.
-            BigStepper(label: "Systolic", value: $systolic, range: 60...260)
-                .frame(maxWidth: .infinity)
-            BigStepper(label: "Diastolic", value: $diastolic, range: 30...180)
-                .frame(maxWidth: .infinity)
-            BigStepper(label: "Pulse", value: $pulse, range: 30...220)
-                .frame(maxWidth: .infinity)
-            BigButton(title: "Save reading", icon: "checkmark") {
+        Card(title: "New reading", icon: "heart.fill") {
+            // Three steppers side by side when they fit (iPad), stacked on iPhone.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .bottom, spacing: 20) {
+                    steppers
+                }
+                VStack(spacing: 16) {
+                    steppers
+                }
+            }
+            .frame(maxWidth: .infinity)
+            BigButton(title: "Save reading", icon: "checkmark", variant: .confirm) {
                 Task { await save() }
             }
+            .disabled(people.selected == nil)
         }
+    }
+
+    @ViewBuilder
+    private var steppers: some View {
+        BigStepper(label: "Top (systolic)", value: $systolic, range: 60...260)
+        BigStepper(label: "Bottom (diastolic)", value: $diastolic, range: 30...180)
+        BigStepper(label: "Pulse", value: $pulse, range: 30...220)
     }
 
     private var exportRow: some View {
         Group {
             if let pdfURL {
                 ShareLink(item: pdfURL) {
-                    Label("Print / Save PDF", systemImage: "printer")
-                        .fhFont(.base, weight: .semibold)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: FH.minTouch)
-                        .background(FH.brand, in: RoundedRectangle(cornerRadius: 14))
+                    HStack(spacing: 10) {
+                        Image(systemName: "printer.fill")
+                        Text("Print or save as PDF")
+                    }
+                    .fhFont(.base, weight: .bold)
+                    .foregroundStyle(FH.ink)
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, minHeight: FH.minTouch)
+                    .chrome()
                 }
+                .buttonStyle(PressableStyle())
             }
         }
     }
 
-    private func readingCard(_ reading: Reading) -> some View {
-        Card {
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(reading.systolic)/\(reading.diastolic)")
-                    .fhFont(.big, weight: .bold)
-                    .monospacedDigit()
+    private func readingRow(_ reading: Reading) -> some View {
+        Well {
+            HStack(alignment: .center, spacing: 14) {
+                Chip(text: "\(reading.systolic) / \(reading.diastolic)", display: true)
                 if let pulse = reading.pulse {
-                    Text("pulse \(pulse)").fhFont(.small).foregroundStyle(.secondary)
+                    Text("pulse \(pulse)").fhFont(.base).foregroundStyle(FH.inkSoft)
                 }
                 Spacer(minLength: 0)
                 Text(Format.dayAndTime(reading.takenAt))
-                    .fhFont(.small)
-                    .foregroundStyle(.secondary)
+                    .fhFont(.base)
+                    .multilineTextAlignment(.trailing)
             }
             if let status = reading.status {
-                // Neutral wording only — never color, never judgment.
-                Text("Systolic \(status.systolic) target · diastolic \(status.diastolic) target")
+                // Neutral wording only — never colour, never judgment.
+                Text("Top \(status.systolic) range · Bottom \(status.diastolic) range")
                     .fhFont(.small)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FH.inkSoft)
             }
             if let note = reading.note, !note.isEmpty {
-                Text(note).fhFont(.small).foregroundStyle(.secondary)
+                Text(note).fhFont(.small).foregroundStyle(FH.inkSoft)
             }
         }
     }
@@ -128,6 +155,8 @@ struct BpLogView: View {
                                                               query: [URLQueryItem(name: "days", value: days)]) {
             view = data
             pdfURL = BpReport.makePDF(person: person, view: data, days: days)
+        } else if view == nil {
+            banners.error("Couldn't load the readings. Please try again.")
         }
     }
 
@@ -136,10 +165,10 @@ struct BpLogView: View {
         do {
             let _: Reading = try await APIClient.shared.post("/api/people/\(person.id)/bp",
                                                              BpIn(systolic: systolic, diastolic: diastolic, pulse: pulse))
-            banners.confirm("Reading saved ✓")
+            banners.confirm("Reading saved")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't save the reading. Please try again.")
         }
     }
 }
@@ -164,17 +193,19 @@ struct BpTargetSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Stepper("Systolic low: \(sysLow)", value: $sysLow, in: 50...250)
-                    Stepper("Systolic high: \(sysHigh)", value: $sysHigh, in: 50...260)
-                    Stepper("Diastolic low: \(diaLow)", value: $diaLow, in: 30...150)
-                    Stepper("Diastolic high: \(diaHigh)", value: $diaHigh, in: 30...180)
-                    TextField("Doctor's name (shown next to the target)", text: $doctorLabel)
+                    Stepper("Top, low end: \(sysLow)", value: $sysLow, in: 50...250)
+                    Stepper("Top, high end: \(sysHigh)", value: $sysHigh, in: 50...260)
+                    Stepper("Bottom, low end: \(diaLow)", value: $diaLow, in: 30...150)
+                    Stepper("Bottom, high end: \(diaHigh)", value: $diaHigh, in: 30...180)
+                    TextField("Doctor or clinic that set this target", text: $doctorLabel)
                 } footer: {
-                    Text("Enter the range exactly as the doctor gave it. It is displayed as \"the doctor's target\", never as the app's judgment.")
+                    Text("Enter the range your doctor gave. Each reading is then marked within, above or below that range. The app never decides what is normal.")
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
+            .scrollContentBackground(.hidden)
+            .groundBackground()
             .navigationTitle("Doctor's target")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -204,7 +235,7 @@ struct BpTargetSheet: View {
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't save the target. Please try again."
         }
     }
 }

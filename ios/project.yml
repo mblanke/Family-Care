@@ -21,8 +21,14 @@ targets:
       path: FamilyHub/Info.plist
       properties:
         CFBundleDisplayName: Home Board
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.1"
         CFBundleVersion: "1"
+        # Bundled typefaces (ios/FamilyHub/Fonts): Sora for headings, Atkinson Hyperlegible for text.
+        UIAppFonts:
+          - Sora-SemiBold.ttf
+          - Sora-Bold.ttf
+          - AtkinsonHyperlegible-Regular.ttf
+          - AtkinsonHyperlegible-Bold.ttf
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations~ipad:
@@ -48,7 +54,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.blanke.homeboard
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: "1.0"
+        MARKETING_VERSION: "1.1"
         ENABLE_PREVIEWS: true
   FamilyHubTests:
     type: bundle.unit-test

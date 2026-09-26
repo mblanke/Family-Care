@@ -1,22 +1,18 @@
-// AppShell.tsx — choose layout by role
+// AppShell.tsx — platinum ground, glass header, then the role's layout
 import { useAuth } from "./lib/auth";
 import { useFontScale } from "./lib/fontScale";
-import { Button } from "./components/Button";
+import { AppHeader } from "./components/AppHeader";
 import { ParentLayout } from "./parent/ParentLayout";
 import { AdminLayout } from "./admin/AdminLayout";
 export function AppShell() {
   const { user, displayName, logout } = useAuth();
   const { scale, toggle } = useFontScale();
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between p-4 border-b-4">
-        <h1 className="text-big font-bold">{displayName}</h1>
-        <div className="flex gap-touch">
-          <Button onClick={toggle}>{scale === "large" ? "Aa Normal" : "Aa Larger"}</Button>
-          <Button onClick={logout}>Sign out</Button>
-        </div>
-      </header>
-      {user?.role === "parent" ? <ParentLayout /> : <AdminLayout />}
+    <div className="ground min-h-screen">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-5 pb-12 flex flex-col gap-5">
+        <AppHeader title={displayName} scale={scale} onToggleScale={toggle} onLogout={logout} />
+        {user?.role === "parent" ? <ParentLayout /> : <AdminLayout />}
+      </div>
     </div>
   );
 }

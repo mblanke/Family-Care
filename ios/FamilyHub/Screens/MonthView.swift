@@ -39,62 +39,60 @@ struct MonthView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    monthButton("chevron.left", "Previous month") { shift(-1) }
+                    IconButton(systemName: "arrow.left", label: "Previous month") { shift(-1) }
                     Spacer()
-                    Text(monthTitle).fhFont(.big, weight: .bold)
+                    Text(monthTitle).fhDisplay(.title).accessibilityAddTraits(.isHeader)
                     Spacer()
-                    monthButton("chevron.right", "Next month") { shift(1) }
+                    IconButton(systemName: "arrow.right", label: "Next month") { shift(1) }
                 }
 
                 let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
                 LazyVGrid(columns: columns, spacing: 4) {
                     ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { label in
-                        Text(label).fhFont(.small, weight: .bold).foregroundStyle(.secondary)
+                        Text(label).fhFont(.small, weight: .bold).foregroundStyle(FH.inkSoft)
                     }
                     ForEach(cells, id: \.id) { cell in
                         dayCell(cell.day, cell.dateKey)
                     }
                 }
             }
+            .padding(20)
+            .glass()
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task(id: Format.isoDate(monthAnchor)) { await load() }
         .refreshable { await load() }
     }
 
-    private func monthButton(_ icon: String, _ a11y: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .fhFont(.base, weight: .bold)
-                .frame(width: FH.minTouch, height: FH.minTouch)
-                .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(a11y)
-    }
-
     @ViewBuilder
     private func dayCell(_ day: Int?, _ dateKey: String?) -> some View {
+        let isToday = dateKey == Format.isoDate(Date())
         VStack(alignment: .leading, spacing: 2) {
             if let day {
-                Text("\(day)").fhFont(.small, weight: .bold)
+                Text("\(day)").fhDisplay(.small)
                 ForEach(byDay[dateKey ?? ""] ?? []) { occurrence in
                     Text(occurrence.title)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(FH.brand, in: RoundedRectangle(cornerRadius: 4))
+                        .background(FH.brand, in: RoundedRectangle(cornerRadius: 6))
                 }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
-        .padding(4)
-        .background(day == nil ? Color.clear : Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 8))
+        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+        .padding(6)
+        .background {
+            if day != nil { WellSurface(radius: 12) }
+        }
+        .overlay {
+            if isToday {
+                RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(FH.brand, lineWidth: 3)
+            }
+        }
     }
 
     private func shift(_ delta: Int) {

@@ -8,11 +8,11 @@ struct ContactsView: View {
     @State private var pendingDelete: Contact?
 
     private static let roleLabels: [String: (icon: String, label: String)] = [
-        "doctor": ("🩺", "Doctor"),
-        "paramedics": ("🚑", "Paramedics"),
-        "occupational_therapist": ("🧑‍⚕️", "Occupational therapist"),
-        "pharmacist": ("💊", "Pharmacist"),
-        "other": ("📇", "Contact"),
+        "doctor": ("stethoscope", "Doctor"),
+        "paramedics": ("cross.case.fill", "Paramedics"),
+        "occupational_therapist": ("figure.walk", "Occupational therapist"),
+        "pharmacist": ("pills.fill", "Pharmacist"),
+        "other": ("person.fill", "Contact"),
     ]
 
     private var emergency: [Contact] { contacts.filter(\.isEmergency) }
@@ -21,22 +21,31 @@ struct ContactsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                ScreenHeading(text: "Contacts")
+
                 if !emergency.isEmpty {
-                    Text("🚨 Emergency").fhFont(.base, weight: .bold)
-                    ForEach(emergency) { card($0) }
+                    Card(title: "Emergency", icon: "exclamationmark.triangle.fill") {
+                        ForEach(emergency) { contact in
+                            Well { contactBody(contact) }
+                        }
+                    }
+                    .overlay(RoundedRectangle(cornerRadius: FH.cardRadius, style: .continuous)
+                                .strokeBorder(FH.danger.opacity(0.4), lineWidth: 2))
                 }
-                ForEach(regular) { card($0) }
+                ForEach(regular) { contact in
+                    Card { contactBody(contact) }
+                }
                 if contacts.isEmpty {
-                    Card { Text("No contacts yet.").fhFont(.base) }
+                    Card { Text("No contacts yet.").fhFont(.big).foregroundStyle(FH.inkSoft) }
                 }
 
                 if session.canEditSchedule {
-                    BigButton(title: "Add contact", icon: "plus") { showAdd = true }
+                    BigButton(title: "Add a contact", icon: "plus") { showAdd = true }
                 }
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
         .sheet(isPresented: $showAdd) {
@@ -53,68 +62,65 @@ struct ContactsView: View {
         }
     }
 
-    private func card(_ contact: Contact) -> some View {
+    @ViewBuilder
+    private func contactBody(_ contact: Contact) -> some View {
         let meta = Self.roleLabels[contact.role] ?? Self.roleLabels["other"]!
-        return Card {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(contact.name).fhFont(.base, weight: .bold)
-                    Text("\(meta.icon) \(meta.label)").fhFont(.small).foregroundStyle(.secondary)
-                    if let notes = contact.notes, !notes.isEmpty {
-                        Text(notes).fhFont(.small).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer(minLength: 0)
-                if session.canEditSchedule {
-                    Button {
-                        pendingDelete = contact
-                    } label: {
-                        Image(systemName: "trash")
-                            .fhFont(.base)
-                            .foregroundStyle(FH.danger)
-                            .frame(width: FH.minTouch, height: FH.minTouch)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(contact.name)")
-                }
-            }
+        HStack(alignment: .center, spacing: 12) {
+            Text(contact.name).fhFont(.big, weight: .bold)
+            Spacer(minLength: 0)
+            Chip(text: meta.label, systemImage: meta.icon)
+        }
+        if let notes = contact.notes, !notes.isEmpty {
+            Text(notes).fhFont(.base).foregroundStyle(FH.inkSoft)
+        }
 
-            BigButton(title: "📞 Call \(contact.name)", icon: nil) {
-                let digits = contact.phone.filter { $0.isNumber || $0 == "+" }
-                if let url = URL(string: "tel:\(digits)") {
+        BigButton(title: "Call \(contact.name)", icon: "phone.fill", variant: .confirm) {
+            let digits = contact.phone.filter { $0.isNumber || $0 == "+" }
+            if let url = URL(string: "tel:\(digits)") {
+                UIApplication.shared.open(url)
+            }
+        }
+        .accessibilityLabel("Call \(contact.name)")
+
+        if let address = contact.address, !address.isEmpty {
+            Button {
+                let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
+                if let url = URL(string: "https://maps.apple.com/?q=\(encoded)") {
                     UIApplication.shared.open(url)
                 }
+            } label: {
+                Label(address, systemImage: "mappin.and.ellipse")
+                    .fhFont(.base)
+                    .underline()
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(FH.brandDark)
+        }
 
-            if let address = contact.address, !address.isEmpty {
-                Button {
-                    let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? address
-                    if let url = URL(string: "https://maps.apple.com/?q=\(encoded)") {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    Label(address, systemImage: "map")
-                        .fhFont(.small)
-                        .frame(maxWidth: .infinity, minHeight: FH.minTouch, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(FH.brand)
+        if session.canEditSchedule {
+            BigButton(title: "Remove", icon: "trash", variant: .secondary, fullWidth: false) {
+                pendingDelete = contact
             }
+            .accessibilityLabel("Remove \(contact.name)")
         }
     }
 
     private func load() async {
         if let list: [Contact] = try? await APIClient.shared.get("/api/contacts") {
             contacts = list
+        } else if contacts.isEmpty {
+            banners.error("Couldn't load the contacts. Please try again.")
         }
     }
 
     private func remove(_ contact: Contact) async {
         do {
             let _: OkOut = try await APIClient.shared.delete("/api/contacts/\(contact.id)")
+            banners.confirm("Contact removed")
             await load()
         } catch {
-            banners.error(error.localizedDescription)
+            banners.error("Couldn't remove the contact. Please try again.")
         }
     }
 }
@@ -136,7 +142,7 @@ struct ContactFormSheet: View {
         NavigationStack {
             Form {
                 TextField("Name", text: $name)
-                Picker("Role", selection: $role) {
+                Picker("Who they are", selection: $role) {
                     Text("Doctor").tag("doctor")
                     Text("Paramedics").tag("paramedics")
                     Text("Occupational therapist").tag("occupational_therapist")
@@ -146,13 +152,13 @@ struct ContactFormSheet: View {
                 TextField("Phone", text: $phone).keyboardType(.phonePad)
                 TextField("Address (optional)", text: $address)
                 TextField("Notes (optional)", text: $notes)
-                Toggle("🚨 Emergency contact", isOn: $isEmergency)
-                if let errorText {
-                    Text(errorText).foregroundStyle(FH.danger)
-                }
+                Toggle("Show at the top as an emergency number", isOn: $isEmergency).tint(FH.brand)
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Add contact")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("Add a contact")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -174,11 +180,11 @@ struct ContactFormSheet: View {
                                  notes: notes.isEmpty ? nil : notes,
                                  personId: nil, isEmergency: isEmergency)
             let _: Contact = try await APIClient.shared.post("/api/contacts", body)
-            banners.confirm("Added \(name)")
+            banners.confirm("Contact added")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't add the contact. Please try again."
         }
     }
 }

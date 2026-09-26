@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Occurrence } from "../api/types";
+import { Icon } from "../components/icons";
 
 function getMonthBounds(year: number, month: number): { start: string; end: string } {
   const end = new Date(year, month + 1, 0);
@@ -16,13 +17,13 @@ function isoDate(iso: string): string {
 }
 
 // Hoisted cell helper
-function DayCell({ dayNum, appts }: { dayNum: number; appts: Occurrence[] }) {
+function DayCell({ dayNum, appts, today }: { dayNum: number; appts: Occurrence[]; today: boolean }) {
   return (
-    <div className="border rounded-lg p-2 min-h-[80px] flex flex-col gap-1">
-      <span className="text-base font-bold">{dayNum}</span>
+    <div className={`well rounded-[14px] p-2 min-h-[96px] flex flex-col gap-1 ${today ? "ring-4 ring-brand" : ""}`}>
+      <span className="text-base font-bold font-display">{dayNum}</span>
       {appts.map(a => (
         <div key={`${a.appointment_id}-${a.start}`}
-             className="text-sm bg-brand text-paper rounded px-1 truncate">
+             className="btn-primary text-[1rem] leading-snug rounded-lg px-2 py-1 truncate shadow-none">
           {a.title}
         </div>
       ))}
@@ -56,32 +57,39 @@ export function MonthView() {
   const monthName = new Date(year, month, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Build grid cells: leading blanks + numbered days
-  const cells: Array<{ dayNum: number | null; appts: Occurrence[] }> = [];
-  for (let i = 0; i < firstDay; i++) cells.push({ dayNum: null, appts: [] });
+  const cells: Array<{ dayNum: number | null; iso: string; appts: Occurrence[] }> = [];
+  for (let i = 0; i < firstDay; i++) cells.push({ dayNum: null, iso: "", appts: [] });
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    cells.push({ dayNum: d, appts: appts.filter(a => isoDate(a.start) === iso) });
+    cells.push({ dayNum: d, iso, appts: appts.filter(a => isoDate(a.start) === iso) });
   }
 
   return (
-    <div className="p-6 flex flex-col gap-4">
+    <section className="glass rounded-card p-5 sm:p-6 flex flex-col gap-4 mt-6">
       <div className="flex items-center gap-4">
-        <button onClick={prev} className="min-h-touch px-5 border-4 rounded-2xl text-big">‹</button>
-        <h2 className="text-huge font-bold flex-1 text-center">{monthName}</h2>
-        <button onClick={next} className="min-h-touch px-5 border-4 rounded-2xl text-big">›</button>
+        <button type="button" onClick={prev} aria-label="Previous month"
+                className="chrome pressable rounded-pill w-16 h-16 inline-flex items-center justify-center">
+          <Icon name="back" size={30} />
+        </button>
+        <h2 className="font-display text-title font-bold flex-1 text-center m-0">{monthName}</h2>
+        <button type="button" onClick={next} aria-label="Next month"
+                className="chrome pressable rounded-pill w-16 h-16 inline-flex items-center justify-center">
+          <Icon name="arrow" size={30} />
+        </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-base font-bold text-center mb-1">
+      <div className="grid grid-cols-7 gap-1 text-base font-bold text-center text-ink-soft">
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => <span key={d}>{d}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
         {cells.map((c, i) =>
           c.dayNum === null
-            ? <div key={`blank-${i}`} className="min-h-[80px]" />
-            : <DayCell key={c.dayNum} dayNum={c.dayNum} appts={c.appts} />
+            ? <div key={`blank-${i}`} className="min-h-[96px]" />
+            : <DayCell key={c.dayNum} dayNum={c.dayNum} appts={c.appts} today={c.iso === todayIso} />
         )}
       </div>
-    </div>
+    </section>
   );
 }

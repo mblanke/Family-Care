@@ -12,35 +12,40 @@ struct AccountsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ForEach(accounts) { account in
-                    Card {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(account.displayName + (account.isActive ? "" : " (inactive)"))
-                                    .fhFont(.base, weight: .bold)
-                                    .foregroundStyle(account.isActive ? FH.ink : .secondary)
-                                Text("\(account.username) — \(account.role.rawValue)")
-                                    .fhFont(.small)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                            if account.isActive {
-                                Button("Deactivate", role: .destructive) {
-                                    pendingDeactivate = account
+                ScreenHeading(text: "Accounts")
+
+                BigButton(title: "Create an account", icon: "plus", fullWidth: false) { showAdd = true }
+
+                Card(title: "Existing accounts", icon: "person.2.fill") {
+                    if accounts.isEmpty {
+                        Text("No accounts yet.").fhFont(.base).foregroundStyle(FH.inkSoft)
+                    }
+                    ForEach(accounts) { account in
+                        Well {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(account.displayName)
+                                        .fhFont(.big, weight: .bold)
+                                        .foregroundStyle(account.isActive ? FH.ink : FH.inkSoft)
+                                    Text(account.username + (account.isActive ? "" : " · inactive"))
+                                        .fhFont(.base)
+                                        .foregroundStyle(FH.inkSoft)
                                 }
-                                .fhFont(.small, weight: .semibold)
-                                .buttonStyle(.bordered)
-                                .frame(minHeight: FH.minTouch - 16)
+                                Spacer(minLength: 0)
+                                Chip(text: Self.roleLabel(account.role))
+                                if account.isActive {
+                                    BigButton(title: "Deactivate", variant: .secondary, fullWidth: false) {
+                                        pendingDeactivate = account
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                BigButton(title: "Create account", icon: "person.badge.plus") { showAdd = true }
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
         .sheet(isPresented: $showAdd) {
@@ -54,6 +59,14 @@ struct AccountsView: View {
                 if let account = pendingDeactivate { Task { await deactivate(account) } }
             }
             Button("Keep it", role: .cancel) {}
+        }
+    }
+
+    private static func roleLabel(_ role: Role) -> String {
+        switch role {
+        case .admin: return "Admin"
+        case .family: return "Family"
+        case .parent: return "Parent"
         }
     }
 
@@ -97,22 +110,24 @@ struct AccountFormSheet: View {
                 SecureField("Password", text: $password)
                 TextField("Display name", text: $displayName)
                 Picker("Role", selection: $role) {
-                    Text("Family").tag("family")
-                    Text("Parent").tag("parent")
-                    Text("Admin").tag("admin")
+                    Text("Family: adds and edits").tag("family")
+                    Text("Parent: simple Today-first view").tag("parent")
+                    Text("Admin: everything").tag("admin")
                 }
                 if role == "parent" {
-                    Picker("Link to", selection: $personId) {
-                        Text("No link").tag(Int?.none)
+                    Picker("Which parent is this account for?", selection: $personId) {
+                        Text("Choose…").tag(Int?.none)
                         ForEach(people) { person in
                             Text(person.name).tag(Int?.some(person.id))
                         }
                     }
                 }
-                if let errorText { Text(errorText).foregroundStyle(FH.danger) }
+                if let errorText { InlineError(text: errorText) }
             }
             .fhFont(.base)
-            .navigationTitle("Create account")
+            .scrollContentBackground(.hidden)
+            .groundBackground()
+            .navigationTitle("Create an account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -129,11 +144,11 @@ struct AccountFormSheet: View {
             let body = AccountIn(username: username, password: password, displayName: displayName,
                                  role: role, personId: role == "parent" ? personId : nil)
             let _: Account = try await APIClient.shared.post("/api/accounts", body)
-            banners.confirm("Created \(displayName)")
+            banners.confirm("Account created")
             await onSaved()
             dismiss()
         } catch {
-            errorText = error.localizedDescription
+            errorText = "Couldn't create the account. Please try again."
         }
     }
 }

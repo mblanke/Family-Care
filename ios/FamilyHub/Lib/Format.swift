@@ -30,6 +30,23 @@ enum Format {
         return formatter.string(from: date)
     }
 
+    /// "2026-07-16" or "2026-07-16T…" → "July 16, 2026" (history entries)
+    static func longDate(_ iso: String) -> String {
+        guard let date = dateComponents(iso) else { return iso }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM d, yyyy"
+        return formatter.string(from: date)
+    }
+
+    /// 0 → "today", 1 → "tomorrow", n → "in n days" (Coming up list)
+    static func daysUntil(_ days: Int) -> String {
+        switch days {
+        case 0: return "today"
+        case 1: return "tomorrow"
+        default: return "in \(days) days"
+        }
+    }
+
     /// "2026-07-16T14:05:00" → "July 16, 2:05 pm" (for history/reading timestamps)
     static func dayAndTime(_ iso: String) -> String {
         iso.contains("T") ? "\(shortDay(iso)), \(time(iso))" : shortDay(iso)

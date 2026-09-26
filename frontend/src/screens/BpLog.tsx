@@ -5,9 +5,16 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { usePersonPicker } from "../lib/personPicker";
 import { useAuth } from "../lib/auth";
+import { formatDateTime } from "../lib/format";
 import { Button } from "../components/Button";
+import { Card, Well } from "../components/Card";
 import { Confirmation } from "../components/Confirmation";
+import { ErrorBanner } from "../components/ErrorBanner";
 import { BpChart } from "../components/BpChart";
+import { ScreenTitle } from "../components/ScreenTitle";
+import { SegmentedControl } from "../components/SegmentedControl";
+import { Stepper } from "../components/Stepper";
+import { Icon } from "../components/icons";
 
 interface Reading {
   id: number;
@@ -27,67 +34,29 @@ interface Target {
   doctor_label: string;
 }
 
-// Hoisted helper — big stepper control (≥60px buttons per brief)
-function Stepper({
-  label,
-  value,
-  set,
-}: {
-  label: string;
-  value: number;
-  set: (n: number) => void;
-}) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="text-base font-bold">{label}</span>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => set(value - 1)}
-          className="w-16 h-16 border-4 rounded-xl text-big font-bold"
-          aria-label={`${label} decrease`}
-        >
-          −
-        </button>
-        <span className="text-huge w-20 text-center" aria-live="polite">
-          {value}
-        </span>
-        <button
-          onClick={() => set(value + 1)}
-          className="w-16 h-16 border-4 rounded-xl text-big font-bold"
-          aria-label={`${label} increase`}
-        >
-          ＋
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // Hoisted helper — single reading row, shows factual status only when target exists
 function ReadingRow({ r }: { r: Reading }) {
   return (
-    <li className="border-4 rounded-xl p-3 text-big flex flex-wrap gap-3 items-center">
-      <span className="font-bold">
-        {r.systolic}/{r.diastolic}
+    <Well className="flex-wrap">
+      <span className="chrome rounded-[16px] min-w-[9rem] min-h-[60px] inline-flex items-center justify-center font-display text-big font-bold px-3">
+        {r.systolic} / {r.diastolic}
       </span>
-      {r.pulse != null && (
-        <span className="text-base">♥ {r.pulse}</span>
-      )}
-      <span className="text-base">{r.taken_at.slice(0, 10)}</span>
+      {r.pulse != null && <span className="text-base text-ink-soft min-w-[5.5rem]">pulse {r.pulse}</span>}
+      <span className="text-base flex-1 min-w-[13rem] whitespace-nowrap">{formatDateTime(r.taken_at)}</span>
       {/* Status shown ONLY when a doctor target is set — factual words, NO red/green */}
       {r.status != null && (
-        <span className="text-base italic">
-          systolic {r.status.systolic} target · diastolic {r.status.diastolic} target
+        <span className="text-base text-ink-soft">
+          Top {r.status.systolic} range · Bottom {r.status.diastolic} range
         </span>
       )}
-    </li>
+    </Well>
   );
 }
 
-const RANGE_OPTIONS: [number, string][] = [
-  [30, "30 days"],
-  [90, "90 days"],
-  [0, "All"],
+const RANGE_OPTIONS = [
+  { id: 30, label: "30 days" },
+  { id: 90, label: "90 days" },
+  { id: 0, label: "All" },
 ];
 
 export function BpLog() {
@@ -130,6 +99,8 @@ export function BpLog() {
         setTDiaHigh(String(v.target.dia_high));
         setTLabel(v.target.doctor_label);
       }
+    } else {
+      setError("Couldn't load the readings. Please try again.");
     }
   }, [selected, days]);
 
@@ -145,18 +116,18 @@ export function BpLog() {
         diastolic: dia,
         pulse,
       });
-      setAck("Reading saved ✓");
+      setAck("Reading saved");
       setError(null);
       void load();
     } catch {
-      setError("Could not save the reading — please try again.");
+      setError("Couldn't save the reading. Please try again.");
     }
   }
 
   async function handleSaveTarget() {
     if (selected == null) return;
     if (tLabel.trim() === "") {
-      setTargetError("Doctor / clinic label is required.");
+      setTargetError("Enter the doctor or clinic that set this target.");
       return;
     }
     const sysLow = Number(tSysLow);
@@ -165,7 +136,7 @@ export function BpLog() {
     const diaHigh = Number(tDiaHigh);
     if (!tSysLow || !tSysHigh || !tDiaLow || !tDiaHigh ||
         isNaN(sysLow) || isNaN(sysHigh) || isNaN(diaLow) || isNaN(diaHigh)) {
-      setTargetError("All four range values are required and must be numbers.");
+      setTargetError("Enter all four numbers.");
       return;
     }
     try {
@@ -176,159 +147,120 @@ export function BpLog() {
         dia_high: diaHigh,
         doctor_label: tLabel.trim(),
       });
-      setAck("Target saved ✓");
+      setAck("Target saved");
       setTargetError(null);
       void load();
     } catch {
-      setTargetError("Could not save the target — please try again.");
+      setTargetError("Couldn't save the target. Please try again.");
     }
   }
 
+  const numField = "field rounded-[18px] w-28 h-16 text-big text-center";
+
   return (
-    <div className="p-6 flex flex-col gap-6">
-      {ack != null && (
-        <Confirmation message={ack} onDone={() => setAck(null)} />
-      )}
-      {error != null && (
-        <p role="alert" className="text-big text-red-700">{error}</p>
-      )}
+    <div className="flex flex-col gap-6">
+      {ack != null && <Confirmation message={ack} onDone={() => setAck(null)} />}
+      {error != null && <ErrorBanner message={error} onDone={() => setError(null)} />}
 
-      <h2 className="text-huge font-bold">Blood pressure</h2>
+      <ScreenTitle right={picker}>Blood pressure</ScreenTitle>
 
-      {picker}
-
-      {/* Entry form — big steppers ≥60px */}
-      <div className="flex gap-6 flex-wrap items-end">
-        <Stepper label="Top (systolic)" value={sys} set={setSys} />
-        <Stepper label="Bottom (diastolic)" value={dia} set={setDia} />
-        <Stepper label="Pulse" value={pulse} set={setPulse} />
-        <Button
-          onClick={() => void handleLog()}
-          icon={<span aria-hidden="true">＋</span>}
-        >
+      {/* Entry form — big steppers */}
+      <Card title="New reading" icon="heart">
+        <div className="flex gap-6 flex-wrap items-end justify-center">
+          <Stepper label="Top (systolic)" value={sys} onChange={setSys} />
+          <Stepper label="Bottom (diastolic)" value={dia} onChange={setDia} />
+          <Stepper label="Pulse" value={pulse} onChange={setPulse} />
+        </div>
+        <Button variant="confirm" onClick={() => void handleLog()} disabled={selected == null}
+                className="min-h-20 mt-2" icon={<Icon name="check" size={30} strokeWidth={3} />}>
           Save reading
         </Button>
-      </div>
+      </Card>
 
-      {/* Time-range control + pulse toggle — bg-brand for active, never bg-dad */}
+      {/* Time-range control + pulse toggle + print link */}
       <div className="flex gap-touch items-center flex-wrap">
-        {RANGE_OPTIONS.map(([d, label]) => (
-          <button
-            key={d}
-            onClick={() => setDays(d)}
-            className={`min-h-touch px-4 rounded-xl text-base font-bold ${
-              days === d ? "bg-brand text-paper" : "border-4"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        <label className="text-base flex items-center gap-2 ml-4">
+        <SegmentedControl label="Time range" size="base" options={RANGE_OPTIONS} value={days} onChange={setDays} className="w-auto" />
+        <label className="text-base font-bold flex items-center gap-3 min-h-touch px-2">
           <input
             type="checkbox"
-            className="w-6 h-6"
+            className="w-8 h-8 accent-brand"
             checked={showPulse}
             onChange={e => setShowPulse(e.target.checked)}
           />
           Show pulse
         </label>
-        <a
-          href={`/api/people/${selected}/bp/export?days=${days || 90}`}
-          target="_blank"
-          rel="noopener"
-          className="min-h-touch px-4 rounded-xl border-4 text-base font-bold inline-flex items-center"
-        >
-          Print / Save PDF
-        </a>
+        {selected != null ? (
+          <a
+            href={`/api/people/${selected}/bp/export?days=${days}`}
+            target="_blank"
+            rel="noopener"
+            className="chrome pressable rounded-pill min-h-touch px-5 text-base font-bold inline-flex items-center gap-2 no-underline text-ink ml-auto"
+          >
+            <Icon name="print" size={26} />Print or save as PDF
+          </a>
+        ) : null}
       </div>
 
       {/* Trend chart — two series by line-style + legend, not color */}
-      <BpChart readings={readings} target={target} showPulse={showPulse} />
+      <Card title={`Trend, ${days === 0 ? "all readings" : `last ${days} days`}`}>
+        <BpChart readings={readings} target={target} showPulse={showPulse} />
+      </Card>
 
       {/* Admin-only: doctor's target entry form */}
       {isAdmin && (
-        <section className="border-4 rounded-xl p-4 flex flex-col gap-4">
-          <h3 className="text-big font-bold">Doctor's target (optional)</h3>
-          <p className="text-base">
-            Enter the range your doctor gave — readings are then shown as within
-            / above / below it. Not the app deciding what's normal.
+        <Card title="Doctor's target (optional)">
+          <p className="m-0 text-base text-ink-soft">
+            Enter the range your doctor gave. Each reading is then marked within, above or below
+            that range. The app never decides what is normal.
           </p>
           {targetError != null && (
-            <p role="alert" className="text-big text-red-700">{targetError}</p>
+            <p role="alert" className="m-0 text-big font-bold text-danger flex items-center gap-3">
+              <Icon name="alert" size={30} />{targetError}
+            </p>
           )}
           <div className="flex flex-wrap gap-4 items-end">
-            <label className="flex flex-col gap-1 text-base">
-              Systolic low
-              <input
-                type="number"
-                className="border-4 rounded-xl w-24 h-16 text-big text-center"
-                value={tSysLow}
-                onChange={e => setTSysLow(e.target.value)}
-                aria-label="Systolic low"
-              />
+            <label className="flex flex-col gap-1 text-base font-bold">
+              Top, low end
+              <input type="number" inputMode="numeric" className={numField} value={tSysLow} onChange={e => setTSysLow(e.target.value)} aria-label="Systolic low" />
             </label>
-            <label className="flex flex-col gap-1 text-base">
-              Systolic high
-              <input
-                type="number"
-                className="border-4 rounded-xl w-24 h-16 text-big text-center"
-                value={tSysHigh}
-                onChange={e => setTSysHigh(e.target.value)}
-                aria-label="Systolic high"
-              />
+            <label className="flex flex-col gap-1 text-base font-bold">
+              Top, high end
+              <input type="number" inputMode="numeric" className={numField} value={tSysHigh} onChange={e => setTSysHigh(e.target.value)} aria-label="Systolic high" />
             </label>
-            <label className="flex flex-col gap-1 text-base">
-              Diastolic low
-              <input
-                type="number"
-                className="border-4 rounded-xl w-24 h-16 text-big text-center"
-                value={tDiaLow}
-                onChange={e => setTDiaLow(e.target.value)}
-                aria-label="Diastolic low"
-              />
+            <label className="flex flex-col gap-1 text-base font-bold">
+              Bottom, low end
+              <input type="number" inputMode="numeric" className={numField} value={tDiaLow} onChange={e => setTDiaLow(e.target.value)} aria-label="Diastolic low" />
             </label>
-            <label className="flex flex-col gap-1 text-base">
-              Diastolic high
-              <input
-                type="number"
-                className="border-4 rounded-xl w-24 h-16 text-big text-center"
-                value={tDiaHigh}
-                onChange={e => setTDiaHigh(e.target.value)}
-                aria-label="Diastolic high"
-              />
+            <label className="flex flex-col gap-1 text-base font-bold">
+              Bottom, high end
+              <input type="number" inputMode="numeric" className={numField} value={tDiaHigh} onChange={e => setTDiaHigh(e.target.value)} aria-label="Diastolic high" />
             </label>
-            <label className="flex flex-col gap-1 text-base">
-              Doctor / clinic label
-              <input
-                type="text"
-                className="border-4 rounded-xl px-3 h-16 text-big"
-                value={tLabel}
-                onChange={e => setTLabel(e.target.value)}
-                placeholder="e.g. Dr. Lee"
-                aria-label="Doctor or clinic label"
-              />
+            <label className="flex flex-col gap-1 text-base font-bold flex-1 min-w-[14rem]">
+              Doctor or clinic
+              <input type="text" className="field rounded-[18px] px-4 h-16 text-big" value={tLabel}
+                     onChange={e => setTLabel(e.target.value)} placeholder="For example: Dr. Lee" aria-label="Doctor or clinic label" />
             </label>
           </div>
           <div>
-            <Button
-              onClick={() => void handleSaveTarget()}
-              icon={<span aria-hidden="true">✓</span>}
-            >
-              Save target
-            </Button>
+            <Button onClick={() => void handleSaveTarget()} icon={<Icon name="check" strokeWidth={3} />}>Save target</Button>
           </div>
-        </section>
+        </Card>
       )}
 
       {/* Recent readings list */}
-      <section>
-        <h3 className="text-big font-bold mb-2">Recent readings</h3>
-        <ul className="flex flex-col gap-2">
-          {readings.map(r => (
-            <ReadingRow key={r.id} r={r} />
-          ))}
-        </ul>
-      </section>
+      <Card title="Recent readings">
+        {readings.length === 0 ? (
+          <p className="m-0 text-base text-ink-soft">No readings in this range.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {readings.map(r => <ReadingRow key={r.id} r={r} />)}
+          </div>
+        )}
+      </Card>
+
+      <p className="m-0 text-base text-ink-soft text-center">
+        A personal record to share with your doctor or pharmacist. Not medical advice.
+      </p>
     </div>
   );
 }

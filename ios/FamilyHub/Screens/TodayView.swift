@@ -2,35 +2,56 @@ import SwiftUI
 
 struct TodayView: View {
     @State private var data: TodayData?
+    @State private var people: [Person] = []
     @State private var loadFailed = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ScreenHeading(text: "Today")
+                ScreenHeading(text: "Today", sub: Format.day(Format.isoDate(Date())))
 
                 if let data {
-                    if data.appointments.isEmpty {
-                        Card { Text("Nothing scheduled today.").fhFont(.base) }
-                    } else {
+                    Card(title: "Appointments", icon: "calendar") {
+                        if data.appointments.isEmpty {
+                            Text("Nothing scheduled today.").fhFont(.big)
+                        }
                         ForEach(data.appointments) { occurrence in
-                            AppointmentCard(occurrence: occurrence, rideLabel: "Needs a ride")
+                            AppointmentCard(occurrence: occurrence, people: people)
+                        }
+                    }
+
+                    if !data.openTodos.isEmpty {
+                        Card(title: "To do", icon: "checklist") {
+                            ForEach(data.openTodos) { todo in
+                                HStack(spacing: 14) {
+                                    ChromeSurface(radius: 8)
+                                        .frame(width: 30, height: 30)
+                                        .accessibilityHidden(true)
+                                    Text(todo.text).fhFont(.big)
+                                }
+                            }
                         }
                     }
 
                     if !data.upcomingBirthdays.isEmpty {
-                        ScreenHeading(text: "Coming up")
-                        ForEach(data.upcomingBirthdays) { upcoming in
-                            Card {
-                                Text("🎂 \(upcoming.name)'s birthday in \(upcoming.daysUntil) day\(upcoming.daysUntil == 1 ? "" : "s")"
-                                     + (upcoming.turning.map { " (turning \($0))" } ?? ""))
-                                    .fhFont(.base)
+                        Card(title: "Coming up", icon: "birthday.cake.fill") {
+                            ForEach(data.upcomingBirthdays) { upcoming in
+                                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                    Image(systemName: "birthday.cake.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundStyle(FH.brand)
+                                        .accessibilityHidden(true)
+                                    Text(birthdayLine(upcoming)).fhFont(.big)
+                                }
                             }
                         }
                     }
                 } else if loadFailed {
                     Card {
-                        Label("Couldn't reach the server.", systemImage: "wifi.slash").fhFont(.base)
+                        InlineError(text: "Couldn't load today's plan.")
+                        BigButton(title: "Try again", icon: "arrow.clockwise", variant: .secondary, fullWidth: false) {
+                            Task { await load() }
+                        }
                     }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
@@ -38,47 +59,64 @@ struct TodayView: View {
             }
             .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
+        .groundBackground()
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func birthdayLine(_ upcoming: Upcoming) -> AttributedString {
+        var name = AttributedString("\(upcoming.name)'s birthday")
+        name.font = FH.font(.big, weight: .bold, display: false, scale: 1)
+        let when = upcoming.daysUntil == 0 ? " is today!" : " \(Format.daysUntil(upcoming.daysUntil))"
+        let turning = upcoming.turning.map { " (turning \($0))" } ?? ""
+        return name + AttributedString(when + turning)
+    }
+
     private func load() async {
-        do {
-            data = try await APIClient.shared.get("/api/today")
-            loadFailed = false
-        } catch {
-            if data == nil { loadFailed = true }
+        loadFailed = false
+        async let todayReq: TodayData? = try? APIClient.shared.get("/api/today")
+        async let peopleReq: [Person]? = try? APIClient.shared.get("/api/people")
+        if let today = await todayReq {
+            data = today
+        } else if data == nil {
+            loadFailed = true
         }
+        if let list = await peopleReq { people = list }
     }
 }
 
-/// Appointment card: time, title · location, ride badge (Today + Schedule).
+/// Appointment row: chrome time chip, title over location, person chip, ride badge (Today + Schedule).
 struct AppointmentCard: View {
     var occurrence: Occurrence
-    var rideLabel: String = "Ride"
+    var people: [Person] = []
+
+    private var who: [Person] {
+        occurrence.forBoth ? people : people.filter { $0.id == occurrence.personId }
+    }
 
     var body: some View {
-        Card {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(Format.time(occurrence.start))
-                    .fhFont(.base, weight: .bold)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(occurrence.title + (occurrence.location.map { " · \($0)" } ?? ""))
-                        .fhFont(.base)
+        Well {
+            HStack(alignment: .center, spacing: 14) {
+                Chip(text: Format.time(occurrence.start), display: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(occurrence.title).fhFont(.big, weight: .bold)
+                    if let location = occurrence.location, !location.isEmpty {
+                        Text(location).fhFont(.base).foregroundStyle(FH.inkSoft)
+                    }
                     if let notes = occurrence.notes, !notes.isEmpty {
-                        Text(notes).fhFont(.small).foregroundStyle(.secondary)
+                        Text(notes).fhFont(.small).foregroundStyle(FH.inkSoft)
                     }
                 }
                 Spacer(minLength: 0)
-                if occurrence.needsRide {
-                    Text("🚗 \(rideLabel)")
-                        .fhFont(.small, weight: .bold)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(FH.brand, in: Capsule())
-                        .accessibilityLabel("Needs a ride")
+            }
+            if !who.isEmpty || occurrence.needsRide {
+                HStack(spacing: 8) {
+                    ForEach(who) { person in
+                        PersonBadge(person: person)
+                    }
+                    if occurrence.needsRide {
+                        RideBadge()
+                    }
                 }
             }
         }

@@ -33,7 +33,7 @@ describe("ScanReview", () => {
     });
     await waitFor(() => screen.getByDisplayValue("Amlodipine"));
     expect(screen.getByDisplayValue("5 mg")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /add to regimen/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /add this medication/i })).toBeTruthy();
     // Nothing auto-saved — api.post not called yet
     expect(api.post).not.toHaveBeenCalled();
   });

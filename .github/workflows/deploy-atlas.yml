@@ -1,0 +1,101 @@
+name: Deploy to atlas
+
+# Pushes the latest code from GitHub to atlas over the tailnet and rebuilds the
+# stack there (web app, API, MCP). The API container runs `alembic upgrade head`
+# on start, so database migrations apply as part of the deploy.
+#
+# One-time setup: repo secrets TS_AUTHKEY (ephemeral, reusable Tailscale auth key),
+# ATLAS_SSH_KEY (private key whose public half is in atlas ~/.ssh/authorized_keys),
+# ATLAS_USER (that user, in the docker group). Optional ATLAS_HOST (default: atlas).
+# Until those exist, the job skips with a notice instead of failing.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "mcpserver/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-atlas.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-atlas
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      STACK_DIR: /opt/stacks/family-hub
+      ATLAS_HOST: ${{ secrets.ATLAS_HOST || 'atlas' }}
+      ATLAS_USER: ${{ secrets.ATLAS_USER }}
+    steps:
+      - name: Check deploy secrets
+        id: gate
+        env:
+          HAS_TS: ${{ secrets.TS_AUTHKEY != '' }}
+          HAS_KEY: ${{ secrets.ATLAS_SSH_KEY != '' }}
+          HAS_USER: ${{ secrets.ATLAS_USER != '' }}
+        run: |
+          if [ "$HAS_TS" = "true" ] && [ "$HAS_KEY" = "true" ] && [ "$HAS_USER" = "true" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Deploy skipped::Add repo secrets TS_AUTHKEY, ATLAS_SSH_KEY and ATLAS_USER to enable deploys to atlas (see README, Deploy)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.ready == 'true'
+
+      - name: Join the tailnet
+        if: steps.gate.outputs.ready == 'true'
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Set up SSH
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.ATLAS_SSH_KEY }}" > ~/.ssh/atlas
+          chmod 600 ~/.ssh/atlas
+          cat >> ~/.ssh/config <<CFG
+          Host atlas-deploy
+            HostName ${ATLAS_HOST}
+            User ${ATLAS_USER}
+            IdentityFile ~/.ssh/atlas
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+          CFG
+          ssh atlas-deploy "echo connected to \$(hostname); test -d $STACK_DIR && ls $STACK_DIR/.env >/dev/null"
+
+      - name: Copy code to atlas
+        if: steps.gate.outputs.ready == 'true'
+        # No --delete: atlas-only files (.env, backups, photo archives) are never touched.
+        run: |
+          rsync -az --itemize-changes \
+            --exclude '.git/' --exclude '.github/' --exclude '.env' --exclude 'ios/' \
+            --exclude 'node_modules/' --exclude 'frontend/dist/' \
+            --exclude 'backup-*.sql' --exclude '*.tgz' \
+            ./ "atlas-deploy:$STACK_DIR/" | tail -50
+
+      - name: Rebuild and restart
+        if: steps.gate.outputs.ready == 'true'
+        run: ssh atlas-deploy "cd $STACK_DIR && docker compose up -d --build && docker compose ps"
+
+      - name: Health check
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          for i in $(seq 1 24); do
+            # Checked inside the api container: port 8080 may be bound to the tailnet IP (TAILSCALE_BIND).
+            if ssh atlas-deploy "cd $STACK_DIR && docker compose exec -T api python -c \"import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5).read().decode())\"" ; then
+              echo; echo "atlas is healthy"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::API did not answer /healthz within 2 minutes"
+          ssh atlas-deploy "cd $STACK_DIR && docker compose logs --tail=80 api" || true
+          exit 1
