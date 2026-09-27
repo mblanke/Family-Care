@@ -20,22 +20,24 @@ parent accounts from the admin UI (added in v1 core). Roles: `admin` / `family` 
 
 ## Deploy (automatic, from GitHub)
 
-Code flows **here → GitHub → atlas**. Every push to `main` that touches the web app, API or MCP
-runs `.github/workflows/deploy-atlas.yml`: the runner joins the tailnet, copies the repo to
-`/opt/stacks/family-hub/` with rsync (never touching `.env` or backups; no files are deleted),
-runs `docker compose up -d --build`, and waits for `/healthz`. Database migrations apply on API
-start. It can also be run by hand from the Actions tab.
+Code flows **here → GitHub → atlas**. Atlas checks GitHub every 5 minutes and, when `main` has a new
+commit, copies the code into `/opt/stacks/family-hub/` (never touching `.env` or backups), runs
+`docker compose up -d --build`, and waits for `/healthz`. Database migrations apply on API start.
 
-One-time setup (repo → Settings → Secrets and variables → Actions):
+One-time install, on atlas (no keys or secrets needed; the repository is public):
 
-| Secret | What to put in it |
-|---|---|
-| `TS_AUTHKEY` | Tailscale admin → Settings → Keys → an **ephemeral, reusable** auth key |
-| `ATLAS_SSH_KEY` | A private key made for deploys; its `.pub` goes in atlas `~/.ssh/authorized_keys` |
-| `ATLAS_USER` | The atlas user that owns that key and is in the `docker` group |
-| `ATLAS_HOST` | Optional. Defaults to the MagicDNS name `atlas` |
+```bash
+curl -fsSL https://raw.githubusercontent.com/mblanke/family-care/main/scripts/atlas-autodeploy/install.sh | sudo bash
+```
 
-Until the secrets exist, the workflow skips with a notice instead of failing.
+- Watch it: `journalctl -u family-hub-update -f`
+- Deploy right now: `sudo family-hub-update --force`
+- Settings (stack directory, branch): `/etc/default/family-hub-update`
+- Turn off: `sudo systemctl disable --now family-hub-update.timer`
+
+Optional push-based alternative: `.github/workflows/deploy-atlas.yml` deploys over the tailnet from
+GitHub Actions once repo secrets `TS_AUTHKEY`, `ATLAS_SSH_KEY` and `ATLAS_USER` exist; until then it
+skips with a notice.
 
 ## Data & backup
 
